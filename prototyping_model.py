@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #%%
+import sys
+import os
 import pandas as pd
 import numpy as np
+import json
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.linear_model import LogisticRegression
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn import metrics
-import ijson
 import seaborn as sns
 import matplotlib.pyplot as plt
 #%%
@@ -38,6 +40,45 @@ enron.rename(columns={'content': 'text'}, inplace=True)
 enron["score"] = 1
 enron["tone"] = "professional"
 enron["subreddit"] = "enron"
+#%%
+"""
+Set functions to create dataframes for subreddits of interest.
+This is very inefficient right now, SQL would be a better solution.
+"""
+#%%
+# bash command to split giant reddit file
+# gsplit -d -l 2000000 RC_2018-04.json reddit
+# grep "fortnite" reddit01.json > reddit01_test.json
+
+def multi_grep(subreddit, path_to_json):
+    json_files = [pos_json for pos_json in os.listdir(path_to_json) if pos_json.endswith('.json')]
+    os.mkdir(path_to_json+subreddit)
+    for i in json_files:
+        os.system("grep "+subreddit+" ../data/reddit_chunks/"+i+" > ../data/reddit_chunks/"+subreddit+"/"+subreddit+"_"+i)
+        print(i)
+    print("Done. Proceed to jsons_to_df")
+    
+def jsons_to_df(subredd, path_to_json):
+    json_files = [pos_json for pos_json in os.listdir(path_to_json) if pos_json.endswith('.json')]
+    jsons_data = pd.DataFrame(columns=['text', 'subreddit'])
+    for i in json_files:
+        json_path = path_to_json+i
+        print(json_path)
+        json_df = pd.read_json(json_path, lines = True)
+        json_df = json_df[json_df.subreddit == subredd]
+        json_df = json_df[['body', 'subreddit']] #drop unneeded columns
+        json_df = json_df.rename(index=str, columns={"body": "text"})
+        jsons_data = pd.concat([jsons_data, json_df], ignore_index=True)
+    return jsons_data        
+#%%
+"""
+Run Reddit functions on all subreddits I think might be helpful.
+"""  
+#%%
+#multi_grep("fortnite","../data/reddit_chunks/")
+#fortnite = jsons_to_df("FORTnITE", "../data/reddit_chunks/FORTnITE/")
+
+
 #%%
 """
 Clean the data.
