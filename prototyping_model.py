@@ -17,7 +17,7 @@ Here we're loading in the datasets and labeling them.
 """
 #%%
 # hp #32,562 comments
-hp = pd.read_csv("./data/entertainment_harrypotter.csv", header = None)
+hp = pd.read_csv("../data/entertainment_harrypotter.csv", header = None)
 hp = hp.drop([0,1], axis = 1)
 hp.columns = ["text","id","subreddit","meta","time","author","ups","downs","authorlinkkarma","authorkarma","authorisgold"]
 hp = hp.dropna(subset = ["text"])
@@ -25,7 +25,7 @@ hp["score"] = 0
 hp["tone"] = "unprofessional"
 
 # ah # 8,835 comments
-ah = pd.read_csv("./data/learning_askhistorians.csv", header = None)
+ah = pd.read_csv("../data/learning_askhistorians.csv", header = None)
 ah = ah.drop([0], axis = 1)
 ah.columns = ["text","id","subreddit","meta","time","author","ups","downs","authorlinkkarma","authorkarma","authorisgold"]
 ah = ah.dropna(subset = ["text"])
@@ -33,7 +33,7 @@ ah["score"] = 1
 ah["tone"] = "professional"
 
 # first 8,000 rows of the enron dataset
-enron = pd.read_csv("./data/enron_05_17_2015_with_labels_v2.csv", nrows = 20000) #517,401 emails, some are labeled with
+enron = pd.read_csv("../data/enron_05_17_2015_with_labels_v2.csv", nrows = 20000) #517,401 emails, some are labeled with
 enron.rename(columns={'content': 'text'}, inplace=True)
 enron["score"] = 1
 enron["tone"] = "professional"
@@ -81,10 +81,10 @@ subs_to_include = ["datascience","legaladvice", "pics", "FORTnITE"]
 #for i in subs_to_include:
 #    multi_grep(i, "../data/reddit_chunks/")
 
-datasci = jsons_to_df("datascience", "./data/reddit_chunks/datascience/")
-legadv = jsons_to_df("legaladvice", "./data/reddit_chunks/legaladvice/")
-pics = jsons_to_df("pics", "./data/reddit_chunks/pics/")
-fortnite = jsons_to_df("FORTnITE", "./data/reddit_chunks/FORTnITE/")
+datasci = jsons_to_df("datascience", "../data/reddit_chunks/datascience/")
+legadv = jsons_to_df("legaladvice", "../data/reddit_chunks/legaladvice/")
+pics = jsons_to_df("pics", "../data/reddit_chunks/pics/")
+fortnite = jsons_to_df("FORTnITE", "../data/reddit_chunks/FORTnITE/")
 
 datasci["score"] = 1
 datasci["tone"] = "professional"
@@ -128,7 +128,7 @@ all_data["text"] = standardize_text(all_data, "text")
 all_data["subreddit"].value_counts()
 all_data["tone"].value_counts()
 
-all_data.to_csv("./data/190611_corpus.csv")
+all_data.to_csv("../data/190611_corpus.csv")
 #%%
 """
 Split the training (80%) and test (20%) data Building our model pipeline
@@ -279,7 +279,7 @@ import csv
 Custom stopword sets!
 """
 #%%
-with open('./data/custom_stops_plus_nltk.csv', 'w') as csvFile:
+with open('../data/custom_stops_plus_nltk.csv', 'w') as csvFile:
     writer = csv.writer(csvFile)
     for i in my_stopwords:
         writer.writerow([i])
