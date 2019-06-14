@@ -24,6 +24,7 @@ import nltk
 from nltk.corpus import stopwords
 from tqdm import tqdm
 tqdm.pandas(desc="progress-bar")
+import pickle
 
 
 #%%
@@ -31,7 +32,7 @@ tqdm.pandas(desc="progress-bar")
 Read in data from prototyping_model.py
 """
 #%% 
-all_data = pd.read_csv("./data/190611_corpus.csv", index_col = 0)
+all_data = pd.read_csv("./data/190613_corpus.csv", index_col = 0)
 all_data["text"] = all_data["text"].fillna(' ') #so that the TfidfVectorizer will work
 
 
@@ -199,3 +200,14 @@ y_ut_unprof, X_ut_unprof = vec_for_learning(model_dbow, ut_unprof_tagged)
 ut_unprof_prob = logreg.predict_proba(X_ut_unprof)
 
 ut_unprof_prob
+#%%
+"""
+Pickle the model and needed objects for web app.
+"""
+#%%
+# model_dbow.save('./insight2019/flask_app/my_flask/model/canisaythat_d2v.model')
+filename = './insight2019/flask_app/my_flask/model/finalized_model.sav'
+pickle.dump(model_dbow, open(filename, 'wb'))
+
+filename2 = './insight2019/flask_app/my_flask/model/finalized_model2.sav'
+pickle.dump(logreg, open(filename2, 'wb'))

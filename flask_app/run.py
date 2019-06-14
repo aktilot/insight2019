@@ -1,5 +1,5 @@
 #!/usr/bin/env python
 
-from flaskexample import app
+from my_flask import app
 
-app.run(debug = True)
+# app.run(debug = True)

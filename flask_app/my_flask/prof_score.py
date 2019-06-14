@@ -1,4 +1,3 @@
-import pandas as pd
 import nltk
 from sklearn.linear_model import LogisticRegression
 from gensim.models.doc2vec import Doc2Vec, TaggedDocument

@@ -1,0 +1,56 @@
+<style>
+
+ .main {
+ background-color: rgba(255, 255, 255, 0.5);
+ margin-top: 100px;
+ padding-bottom: 50px;
+ }
+ .main h1 {
+ font-size: 3.5em;
+ font-family: Arial;
+ color: #2E3759;
+ }
+ .main h2 {
+ font-size: 2em;
+ font-family: Arial;
+ color: #2E3759;
+ }
+ .main h3 {
+ font-size: 2em;
+ font-family: Arial;
+ color: #2E3759;
+ }
+ .main p {
+ font-size:1em;
+ font-family: Arial;
+ color: #2E3759;
+ }
+
+</style>
+
+<html>
+  <head>
+    <title>{{title}}</title>
+    
+    {% if 'show' in request.path %}
+        <link href="./../static/css/bootstrap.min.css" rel="stylesheet">
+        <link href="./../static/css/custom.css" rel="stylesheet">
+    {% else %}
+        <link href="./static/css/bootstrap.min.css" rel="stylesheet">
+        <link href="./static/css/custom.css" rel="stylesheet">
+    {% endif %}
+ </head>
+
+ <body>
+    <div class="container">
+        <form action="/output" method="POST">
+          <div class="form-group">
+            <label for="user_text">Enter your message text below:</label>
+            <textarea class="form-control" type="text" name="user_text" id="user_text" rows="10" cols="30"></textarea>
+          </div>
+          <button type="submit">Analyze!</button>
+        </form>
+    </div>
+ </body>
+
+</html>
