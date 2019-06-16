@@ -112,7 +112,7 @@ Train the Logistic Regression Classifier.
 y_train, X_train = vec_for_learning(model_dbow, train_tagged)
 y_test, X_test = vec_for_learning(model_dbow, test_tagged)
 
-logreg = LogisticRegression(n_jobs=1, C=1e5)
+logreg = LogisticRegression(n_jobs=1, C=1e5, random_state=42)
 logreg.fit(X_train, y_train)
 y_pred = logreg.predict(X_test)
 
