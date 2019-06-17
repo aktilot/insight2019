@@ -261,6 +261,23 @@ This submission has been removed.",datascience,Slack-like
 &#8216; shoudl be 
 &#[0-9]*; to find all the weird XML formatting bugs
 
+Still have some oddball <0x84> stuff floating in the Governmental text.
+"""
+#%%
+urban_dict = []
+
+with open("./data/urbandict-word-def.csv") as csvFile:
+    readCSV = csv.reader(csvFile)
+    for row in readCSV:
+        row_length = len(row)
+        if row_length == 6:
+            urban_dict.append(row) # will have list of lists
+        else:
+            print("Poorly formatted row")
+            
+urban_df = pd.DataFrame(urban_dict, columns = urban_dict[0])
+urban_df.to_csv("./data/urban_dictionary_cleaned.csv")
+#%%
 
 
 
