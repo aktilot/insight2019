@@ -96,7 +96,9 @@ pca_df['pca4'] = pca_result[:,3]
 
 print('Variance explained per principal component: {}'.format(pca.explained_variance_ratio_))
 #%%
-
+"""
+Recode the sources into numeric so that I can plot them 
+"""
 #%%
 
 top_two_comp = pca_df[['pca1','pca2']] # taking first and second principal component
@@ -106,6 +108,13 @@ textstat_results.dtypes
 textstat_results["source_recode"] = textstat_results["source"].cat.codes
 
 textstat_scatter(top_two_comp.values, textstat_results["source_recode"])
+
+#Categories (5, object): 
+#[Dissertation, 
+#Extremely Casual, 
+#Governmental, 
+#Slack-like, 
+#Workplace_Casual]
 
 #%%
 ## Trying TSNE to see the clusters

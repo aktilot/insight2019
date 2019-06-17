@@ -245,3 +245,26 @@ Governmental          215
 """
 #%%
 new_corpus.to_csv("./data/190615_corpus.csv")
+#%%
+"""
+Additional things I noticed while skimming the file in Sublime
+HTML for > and & was still in the Reddit posts
+Need to remove hallmarks of deleted posts and removed comments (may skew algo)
+[0-9]*,\[removed\],AskHistorians,Slack-like
+[0-9]*,\[deleted\],AskHistorians,Slack-like
+[0-9]*,"Please post this in the new \[Weekly 'Entering & Transitioning' Thread\].*\.
+
+This submission has been removed.",datascience,Slack-like
+
+&#8230; should be ...
+&#8211; should be -
+&#8216; shoudl be 
+&#[0-9]*; to find all the weird XML formatting bugs
+
+
+
+
+
+
+
+"""
