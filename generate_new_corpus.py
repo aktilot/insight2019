@@ -11,6 +11,7 @@ import glob
 from bs4 import BeautifulSoup
 import lxml
 import os, re
+import pandas as pd
 #%%
 """
 Convert dissertations and govt repoprts to .csv, each line of original PDF is a line in the file.
@@ -152,3 +153,95 @@ for i in all_gov_files:
 all_gov_pages2 = [''.join(i) for i in all_gov_pages]
 
 #%%
+"""
+Get sub reddits for "very casual internet speak" and "professionals discussing 
+their work informally"
+"""
+#%%
+def multi_grep(subreddit, path_to_json):
+    json_files = [pos_json for pos_json in os.listdir(path_to_json) if pos_json.endswith('.json')]
+    if not os.path.isfile("./data/reddit_chunks/"+subreddit+"/"+subreddit+"_"+json_files[0]):
+        print("Grepping comments from r/"+subreddit)
+        os.mkdir(path_to_json+subreddit)
+        for i in json_files:
+            out_file = "./data/reddit_chunks/"+subreddit+"/"+subreddit+"_"+i
+            os.system("grep "+subreddit+" ./data/reddit_chunks/"+i+" > "+out_file)
+            print(i)
+    print("Done. Proceed to jsons_to_df")
+    
+def jsons_to_df(subredd, path_to_json):
+    json_files = [pos_json for pos_json in os.listdir(path_to_json) if pos_json.endswith('.json')]
+    jsons_data = pd.DataFrame(columns=['text', 'subreddit'])
+    for i in json_files:
+        json_path = path_to_json+i
+        print(json_path)
+        json_df = pd.read_json(json_path, lines = True)
+        json_df = json_df[json_df.subreddit == subredd]
+        json_df = json_df[['body', 'subreddit']] #drop unneeded columns
+        json_df = json_df.rename(index=str, columns={"body": "text"})
+        jsons_data = pd.concat([jsons_data, json_df], ignore_index=True)
+        jsons_data["source"] = "r_"+subredd
+    return jsons_data  
+
+subs_to_include = ["datascience", "aww", "FORTnITE", "marketing", "publishing", "RenewableEnergy", "AskHistorians"]
+for i in subs_to_include:
+    multi_grep(i, "./data/reddit_chunks/")
+#
+df_datascience = jsons_to_df("datascience", "./data/reddit_chunks/datascience/")
+df_datascience["source"] = "Slack-like"
+df_FORTnITE = jsons_to_df("FORTnITE", "./data/reddit_chunks/FORTnITE/")
+df_FORTnITE["source"] = "Extremely Casual"
+df_aww = jsons_to_df("aww", "./data/reddit_chunks/aww/")
+df_aww["source"] = "Extremely Casual"
+df_marketing = jsons_to_df("marketing", "./data/reddit_chunks/marketing/")
+df_marketing["source"] = "Slack-like"
+df_publishing = jsons_to_df("publishing", "./data/reddit_chunks/publishing/")
+df_publishing["source"] = "Slack-like"
+df_RenewableEnergy = jsons_to_df("RenewableEnergy", "./data/reddit_chunks/RenewableEnergy/")
+df_RenewableEnergy["source"] = "Slack-like"
+df_AskHistorians = jsons_to_df("AskHistorians", "./data/reddit_chunks/AskHistorians/")
+df_AskHistorians["source"] = "Slack-like"
+
+#%%
+"""
+Bind all of the text sources together!
+"""
+#%%
+
+df_gov = pd.DataFrame(all_gov_pages2, columns=["text"])
+df_gov["source"] = "Governmental"
+df_aam = pd.DataFrame(all_ask_a_manager, columns=["text"])
+df_aam["source"] = "Workplace_Casual"
+df_diss = pd.DataFrame(all_diss_pages2, columns=["text"])
+df_diss["source"] = "Dissertation"
+
+new_corpus =  pd.concat([df_datascience,
+                        df_FORTnITE.iloc[0:5000,],
+                        df_aww.iloc[0:5000,],
+                        df_marketing,
+                        df_publishing,
+                        df_RenewableEnergy,
+                        df_AskHistorians,
+                        df_gov, 
+                        df_aam, 
+                        df_diss], 
+                        sort = False, 
+                        ignore_index=True)
+
+## check the balance of the datasets, and adjust previous pieces if unbalanced.
+new_corpus["source"].value_counts()
+
+
+#%%
+"""
+Saving the output, classes are not currently balanced.
+Might consider splitting the Dissertations and Governmental pages 
+into smaller strings.
+Slack-like          16573
+Extremely Casual    10000
+Workplace_Casual     1215
+Dissertation          423
+Governmental          215
+"""
+#%%
+new_corpus.to_csv("./data/190615_corpus.csv")
