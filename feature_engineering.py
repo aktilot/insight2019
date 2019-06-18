@@ -472,14 +472,12 @@ weirdos = [30,80,99,322,380, 446]
 """
 Sanity check: What if we remove the URLs? Hopefully this won't change the accuracy.
 Let's use just the standard scaler and the engineered features and see what we get. 
-Yikes, it was down to 60.7%, that's no good. Add all features back and we're at 73.84%!
+Yikes, it was down to 60.7%, that's no good. Add all features back and we're at #74.36%! 
 """
 #%%
 # remove hyperlinks
 no_AskHistorians["text"] = no_AskHistorians["text"].str.replace(r'http\S*\s', ' ')
 no_AskHistorians["text"] = no_AskHistorians["text"].str.replace(r'http\S*(\n|\)|$)', ' ')
-
-
 
 textstat_results2 = pd.DataFrame(columns = ['flesch_ease', 'flesch_grade','gfog',
            'auto_readability','cl_index','lw_formula','dcr_score', 'syll_count', 'lex_count'])
@@ -522,11 +520,7 @@ for row in no_AskHistorians_noURLs["text"]:
 no_AskHistorians_noURLs["Num_emoji"] = emoji_counts
 
 
-
-#sns.boxplot( x=combined_data["source"], y=combined_data["text_standard"] )
-
 # split data into X and y
-#X = no_AskHistorians.loc[:,["text_standard","Google_curses","Num_emoji","Yell_count"]]
 X = no_AskHistorians_noURLs.iloc[:,3:16]
 Y = no_AskHistorians_noURLs['source'] # "source" is the column of numeric sources
 
@@ -548,5 +542,141 @@ y_pred = model.predict(X_test)
 predictions = [round(value) for value in y_pred]
 # evaluate predictions
 accuracy = accuracy_score(y_test, predictions)
-print("Accuracy: %.2f%%" % (accuracy * 100.0)) #73.84%, so no real change?
+print("Accuracy: %.2f%%" % (accuracy * 100.0)) #74.36%! It's actually a smidge better!
 
+#%%
+"""
+Ok, so we get up to 74% accuracy with essentially just readability statistics. What about
+other features that are more actionable for the user?
+Actionable features: 
+    - Foreign words
+    - Parts of speech?
+    - Sentence length
+    - strength of the sentiment
+
+"""
+#%%
+from nltk.sentiment.vader import SentimentIntensityAnalyzer as SIA
+
+sia = SIA()
+results = []
+
+for line in no_AskHistorians_noURLs["text"]: # this returns a list of dicts
+    pol_score = sia.polarity_scores(line)
+    pol_score['text'] = line
+    results.append(pol_score)
+
+sia_neg = []
+sia_pos = []
+sia_neu = []
+sia_comp = []
+for document in results:
+    neg = document['neg']
+    pos = document['pos']
+    neu = document['neu']
+    comp = document['compound']
+    sia_neg.append(neg)
+    sia_pos.append(pos)
+    sia_neu.append(neu)
+    sia_comp.append(comp)
+    
+no_AskHistorians_noURLs["SIA_neg"] = sia_neg
+no_AskHistorians_noURLs["SIA_pos"] = sia_pos
+no_AskHistorians_noURLs["SIA_neu"] = sia_neu
+no_AskHistorians_noURLs["SIA_com"] = sia_comp
+
+# split data into X and y
+X = no_AskHistorians_noURLs.iloc[:,3:20]
+Y = no_AskHistorians_noURLs['source'] # "source" is the column of numeric sources
+
+# split data into train and test sets
+seed = 8
+test_size = 0.2
+X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=test_size, random_state=seed)
+
+# This time we will scale the data correctly
+scaler = preprocessing.StandardScaler().fit(X_train)
+X_train = scaler.transform(X_train)
+X_test = scaler.transform(X_test) 
+
+# fit model no training data
+model = XGBClassifier()
+model.fit(X_train, y_train)
+# make predictions for test data
+y_pred = model.predict(X_test)
+predictions = [round(value) for value in y_pred]
+# evaluate predictions
+accuracy = accuracy_score(y_test, predictions)
+print("Accuracy: %.2f%%" % (accuracy * 100.0))
+
+# Plot normalized confusion matrix
+plot_confusion_matrix(y_test, y_pred, classes = y_test, normalize=True,
+                      title='Normalized confusion matrix')
+
+#%%
+"""
+Density plot with labels for each data source, to see how I'm doing.
+Code adapted from: https://towardsdatascience.com/histograms-and-density-plots-in-python-f6bda88f5ac0
+"""
+#%%
+sources = pd.unique(no_AskHistorians_noURLs["source"])
+
+# Positive sentiment
+for source in sources:
+    # Subset to the airline
+    subset = no_AskHistorians_noURLs[no_AskHistorians_noURLs['source'] == source]
+    # Draw the density plot
+    sns.distplot(subset['SIA_pos'], hist = False, kde = True,
+                 kde_kws = {'linewidth': 3},
+                 label = source)
+    
+# Plot formatting
+plt.legend(prop = {'size': 8}, title = 'Data source', loc = 'best')
+plt.title('Density Plot with Multiple Text Sources')
+plt.xlabel('Sentiment Intensity: Positive')
+plt.ylabel('Density')
+
+# Negative sentiment
+for source in sources:
+    # Subset to the airline
+    subset = no_AskHistorians_noURLs[no_AskHistorians_noURLs['source'] == source]
+    # Draw the density plot
+    sns.distplot(subset['SIA_neg'], hist = False, kde = True,
+                 kde_kws = {'linewidth': 3},
+                 label = source)
+    
+# Plot formatting
+plt.legend(prop = {'size': 8}, title = 'Data source', loc = 'best')
+plt.title('Density Plot with Multiple Text Sources')
+plt.xlabel('Sentiment Intensity: Negative')
+plt.ylabel('Density')
+
+# Neutral sentiment
+for source in sources:
+    # Subset to the airline
+    subset = no_AskHistorians_noURLs[no_AskHistorians_noURLs['source'] == source]
+    # Draw the density plot
+    sns.distplot(subset['SIA_neu'], hist = False, kde = True,
+                 kde_kws = {'linewidth': 3},
+                 label = source)
+    
+# Plot formatting
+plt.legend(prop = {'size': 8}, title = 'Data source', loc = 'best')
+plt.title('Density Plot with Multiple Text Sources')
+plt.xlabel('Sentiment Intensity: Neutral')
+plt.ylabel('Density')
+
+# Compound sentiment
+for source in sources:
+    # Subset to the airline
+    subset = no_AskHistorians_noURLs[no_AskHistorians_noURLs['source'] == source]
+    # Draw the density plot
+    sns.distplot(subset['SIA_com'], hist = False, kde = True,
+                 kde_kws = {'linewidth': 3},
+                 label = source)
+    
+# Plot formatting
+plt.legend(prop = {'size': 8}, title = 'Data source', loc = 'best')
+plt.title('Density Plot with Multiple Text Sources')
+plt.xlabel('Sentiment Intensity: Compound')
+plt.ylabel('Density')
