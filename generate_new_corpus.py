@@ -278,10 +278,113 @@ with open("./data/urbandict-word-def.csv") as csvFile:
 urban_df = pd.DataFrame(urban_dict, columns = urban_dict[0])
 urban_df.to_csv("./data/urban_dictionary_cleaned.csv")
 #%%
-
-
-
-
-
-
 """
+Adding more government docs and dissertations because classification was not
+great in those categories. 
+Will also strip links from all text because they throw off the reading-level
+based features. 
+"""
+#%%
+import tika
+tika.initVM()
+from tika import parser
+
+reports = [i for i in glob.glob("./data/GovernmentReports/round_two/Competition_7991_7.pdf")]
+
+for i in range(0,len(reports)):
+    parsed = parser.from_file(reports[i])
+    with open("./data/GovernmentReports/round_two/report_"+str(i)+".csv", 'w') as csvFile:
+        writer = csv.writer(csvFile)
+        writer.writerow([parsed["content"]])
+    csvFile.close()  
+    
+
+dissertations = [i for i in glob.glob("./data/Dissertations/round_two/*.pdf")]
+
+for i in range(0,len(dissertations)):
+    parsed = parser.from_file(dissertations[i])
+    with open("./data/Dissertations/round_two/dissertation_"+str(i)+".csv", 'w') as csvFile:
+        writer = csv.writer(csvFile)
+        writer.writerow([parsed["content"]])
+    csvFile.close()
+#%%
+"""
+Adding docs, part 2, after manual inspection of the csv files.
+"""
+#%%
+all_gov_files = glob.glob("./data/GovernmentReports/round_two/report_*_clean1.csv")
+all_gov_pages = []
+
+for i in all_gov_files:
+    report_pages = []
+    page_builder = []
+    with open(i) as csvFile:
+        readCSV = csv.reader(csvFile)
+        for row in readCSV:
+            row = ''.join(row) #makes row into a string, not list
+            page_builder.append(row) 
+            temp_row = row.strip()
+            if temp_row.isdigit(): #marks a page break in the original pdf
+                print("found page break")
+                report_pages.append(page_builder)
+                page_builder = []
+                continue
+    all_gov_pages.extend(report_pages) 
+
+all_gov_pages3 = [''.join(i) for i in all_gov_pages]
+
+
+
+all_diss_files = glob.glob("./data/Dissertations/round_two/dissertation_*_clean1.csv")
+all_diss_pages = []
+
+for i in all_diss_files:
+    diss_pages = []
+    page_builder = []
+    with open(i) as csvFile:
+        readCSV = csv.reader(csvFile)
+        for row in readCSV:
+            row = ''.join(row) #makes row into a string, not list
+            page_builder.append(row) 
+            temp_row = row.strip()
+            if temp_row.isdigit(): #marks a page break in the original pdf
+                print("found page break")
+                diss_pages.append(page_builder)
+                page_builder = []
+                continue
+    all_diss_pages.extend(diss_pages) 
+
+all_diss_pages3 = [''.join(i) for i in all_diss_pages]
+#%%
+"""
+Adding docs, part 2, after manual inspection of the csv files.
+"""
+#%%
+
+
+df_gov2 = pd.DataFrame(all_gov_pages3, columns=["text"])
+df_gov2["source"] = "Governmental"
+df_diss2 = pd.DataFrame(all_diss_pages3, columns=["text"])
+df_diss2["source"] = "Dissertation"
+
+new_corpus2 =  pd.concat([new_corpus,
+                        df_gov2,  
+                        df_diss2], 
+                        sort = False, 
+                        ignore_index=True)
+
+## check the balance of the datasets, and adjust previous pieces if unbalanced.
+new_corpus2["source"].value_counts()
+#%%
+"""
+Saving the output, classes are not currently balanced.
+Might consider splitting the Dissertations and Governmental pages 
+into smaller strings.
+Slack-like          16573
+Extremely Casual    10000
+Governmental         1438
+Dissertation         1428
+Workplace_Casual     1215
+"""
+#%%
+new_corpus2.to_csv("./data/190617_corpus.csv")
