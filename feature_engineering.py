@@ -4,7 +4,7 @@
 #%%
 import pandas as pd
 import numpy as np
-all_data = pd.read_csv("./data/190615_corpus.csv", index_col = 0)
+all_data = pd.read_csv("./data/190617_corpus.csv", index_col = 0)
 #%%
 """
 Start with some basics - what's the variance in reading level for these docs?
@@ -117,13 +117,13 @@ Recode the sources into numeric so that I can plot them
 """
 #%%
 
-top_two_comp = pca_df[['pca1','pca2']] # taking first and second principal component
-
-textstat_results["source"] = textstat_results["source"].astype('category')
-textstat_results.dtypes
-textstat_results["source_recode"] = textstat_results["source"].cat.codes
-
-textstat_scatter(top_two_comp.values, textstat_results["source_recode"])
+#top_two_comp = pca_df[['pca1','pca2']] # taking first and second principal component
+#
+#textstat_results["source"] = textstat_results["source"].astype('category')
+#textstat_results.dtypes
+#textstat_results["source_recode"] = textstat_results["source"].cat.codes
+#
+#textstat_scatter(top_two_comp.values, textstat_results["source_recode"])
 
 #Categories (5, object): 
 #[Dissertation, 
@@ -134,14 +134,14 @@ textstat_scatter(top_two_comp.values, textstat_results["source_recode"])
 
 #%%
 """
-Trying TSNE to see the clusters
+Trying TSNE to see the clusters. This takes a few minutes.
 """
 #%%
-from sklearn.manifold import TSNE
-
-textstat_tsne = TSNE(random_state=42).fit_transform(textstat_results.iloc[:,0:7])
-
-textstat_scatter(textstat_tsne, textstat_results["source_recode"])
+#from sklearn.manifold import TSNE
+#
+#textstat_tsne = TSNE(random_state=42).fit_transform(textstat_results)
+#
+#textstat_scatter(textstat_tsne, textstat_results["source"])
 
 #%%
 """
@@ -149,25 +149,25 @@ Let's see what kind of classification we can do, will try XGBoost first.
 64% after cleaning up the corpus. We can do better! Let's add more!
 """
 #%%
-from xgboost import XGBClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
-# split data into X and y
-X = textstat_results.iloc[:,0:8]
-Y = textstat_results.iloc[:,10]
-# split data into train and test sets
-seed = 7
-test_size = 0.33
-X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=test_size, random_state=seed)
-# fit model no training data
-model = XGBClassifier()
-model.fit(X_train, y_train)
-# make predictions for test data
-y_pred = model.predict(X_test)
-predictions = [round(value) for value in y_pred]
-# evaluate predictions
-accuracy = accuracy_score(y_test, predictions)
-print("Accuracy: %.2f%%" % (accuracy * 100.0))
+#from xgboost import XGBClassifier
+#from sklearn.model_selection import train_test_split
+#from sklearn.metrics import accuracy_score
+## split data into X and y
+#X = textstat_results.iloc[:,0:8]
+#Y = textstat_results.iloc[:,10]
+## split data into train and test sets
+#seed = 7
+#test_size = 0.33
+#X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=test_size, random_state=seed)
+## fit model no training data
+#model = XGBClassifier()
+#model.fit(X_train, y_train)
+## make predictions for test data
+#y_pred = model.predict(X_test)
+#predictions = [round(value) for value in y_pred]
+## evaluate predictions
+#accuracy = accuracy_score(y_test, predictions)
+#print("Accuracy: %.2f%%" % (accuracy * 100.0))
 #%%
 """
 Let's see what kind of classification we can do, will try XGBoost first.
@@ -257,7 +257,7 @@ y_pred = model.predict(X_test)
 predictions = [round(value) for value in y_pred]
 # evaluate predictions
 accuracy = accuracy_score(y_test, predictions)
-print("Accuracy: %.2f%%" % (accuracy * 100.0))
+print("Accuracy: %.2f%%" % (accuracy * 100.0)) #71.79% with 190617 corpus
 #%%
 """
 The confusion matrxix
@@ -335,6 +335,218 @@ plot_confusion_matrix(y_test, y_pred, classes = y_test, normalize=True,
 plt.show()
 #%%
 """
-More features! Let's try punctuation usage
+Is r/AskHistorians throwing off the Slack-like section? Let's look!
 """
 #%%
+no_AskHistorians = combined_data.loc[combined_data["subreddit"] != "AskHistorians",:]
+
+# split data into X and y
+X = no_AskHistorians.iloc[:,3:14]
+Y = no_AskHistorians['source'] # "source" is the column of numeric sources
+
+# split data into train and test sets
+seed = 7
+test_size = 0.33
+X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=test_size, random_state=seed)
+
+# This time we will scale the data correctly
+scaler = preprocessing.StandardScaler().fit(X_train)
+X_train = scaler.transform(X_train)
+X_test = scaler.transform(X_test) 
+
+# fit model no training data
+model = XGBClassifier()
+model.fit(X_train, y_train)
+# make predictions for test data
+y_pred = model.predict(X_test)
+predictions = [round(value) for value in y_pred]
+# evaluate predictions
+accuracy = accuracy_score(y_test, predictions)
+print("Accuracy: %.2f%%" % (accuracy * 100.0)) #74.06% without AskHistorians
+#%%
+"""
+Now we know we need to work on classifying "Slack-like" away from "Extremely Casual"
+What about consecutive punctuation?
+"""
+#%%
+import re
+def scream_counter(text):
+    crazy_confused = len(re.findall(r'!\?|\?!', text))
+    ahhhh = len(re.findall(r'!!', text))
+    huhhh = len(re.findall(r'\?\?', text))
+    screams = crazy_confused + ahhhh + huhhh            
+    return screams
+    
+    
+internet_yelling = []
+for row in combined_data["text"]:
+    screams = scream_counter(str(row))
+    internet_yelling.append(screams)
+
+combined_data["Yell_count"] = internet_yelling
+combined_data["Yell_count"].value_counts()
+#%%
+"""
+Let's see if adding yells helped.
+"""
+#%%
+no_AskHistorians = combined_data.loc[combined_data["subreddit"] != "AskHistorians",:]
+no_AskHistorians = no_AskHistorians.reset_index(drop=True) #Maybe this is why y_text was showing NaN?
+
+# split data into X and y
+X = no_AskHistorians.iloc[:,3:15]
+Y = no_AskHistorians['source'] # "source" is the column of numeric sources
+
+# split data into train and test sets
+seed = 87
+test_size = 0.2
+X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=test_size, random_state=seed)
+
+# This time we will scale the data correctly
+scaler = preprocessing.StandardScaler().fit(X_train)
+X_train = scaler.transform(X_train)
+X_test = scaler.transform(X_test) 
+
+# fit model no training data
+model = XGBClassifier()
+model.fit(X_train, y_train)
+# make predictions for test data
+y_pred = model.predict(X_test)
+predictions = [round(value) for value in y_pred]
+# evaluate predictions
+accuracy = accuracy_score(y_test, predictions)
+print("Accuracy: %.2f%%" % (accuracy * 100.0)) #73.84%, so no real change?
+#%%
+"""
+It did not. What about adding or swapping that summary grade level from textstat?
+"""
+#%%
+
+text_standard = []
+for i in combined_data["text"]:
+    grade = ts.text_standard(str(i), float_output=True)
+    text_standard.append(grade)
+
+combined_data["text_standard"] = text_standard
+sns.boxplot( x=combined_data["source"], y=combined_data["text_standard"] )
+
+#%%
+"""
+Sanity check: using LIME see why the model is doing well so far
+Tutorial: https://www.analyticsvidhya.com/blog/2017/06/building-trust-in-machine-learning-models/
+"""
+#%%
+import lime
+import lime.lime_tabular
+
+# create lambda function to return probability of the target variable given a set of features
+predict_fn_xgb = lambda x: model.predict_proba(x).astype(float)
+#create list of feature names to be used later
+feature_names = no_AskHistorians.columns[3:15].tolist()
+#create LIME explainer
+explainer = lime.lime_tabular.LimeTabularExplainer(X_train, 
+                                                   feature_names = feature_names, 
+                                                   class_names = ['1', '2','3','4','5'],
+                                                   kernel_width = 3)
+#%%
+"""
+Sanity check: test specific items to see why they were labeled
+"""
+#%%
+lime_labled_tuples = list(zip(y_test, predictions))
+lime_labeled_df = pd.DataFrame(lime_labled_tuples, columns = ["true_score", "predicted_score"])
+
+observation_to_check = 80 #used Variable explorer to figure this out
+exp = explainer.explain_instance(X_test[observation_to_check], 
+                                 predict_fn_xgb, 
+                                 num_features = len(feature_names))
+
+import pickle
+filename = 'pickled_LIME.sav'
+pickle.dump(exp, open(filename, 'wb'))
+
+
+weirdos = [30,80,99,322,380, 446]
+
+#%%
+"""
+Sanity check: What if we remove the URLs? Hopefully this won't change the accuracy.
+Let's use just the standard scaler and the engineered features and see what we get. 
+Yikes, it was down to 60.7%, that's no good. Add all features back and we're at 73.84%!
+"""
+#%%
+# remove hyperlinks
+no_AskHistorians["text"] = no_AskHistorians["text"].str.replace(r'http\S*\s', ' ')
+no_AskHistorians["text"] = no_AskHistorians["text"].str.replace(r'http\S*(\n|\)|$)', ' ')
+
+
+
+textstat_results2 = pd.DataFrame(columns = ['flesch_ease', 'flesch_grade','gfog',
+           'auto_readability','cl_index','lw_formula','dcr_score', 'syll_count', 'lex_count'])
+
+for i in no_AskHistorians["text"]: #textstat needs a string
+    results = textstat_stats(str(i))
+    textstat_results2 = textstat_results2.append(results, ignore_index=True) #so that index is continuous
+
+textstat_results2 = textstat_results2.reset_index(drop=True)
+
+text_standard = []
+for i in no_AskHistorians["text"]:
+    grade = ts.text_standard(str(i), float_output=True)
+    text_standard.append(grade)
+
+no_AskHistorians_noURLs = no_AskHistorians.iloc[:,0:3]
+no_AskHistorians_noURLs = pd.concat([no_AskHistorians_noURLs, textstat_results2], axis = 1)
+no_AskHistorians_noURLs["text_standard"] = text_standard
+
+internet_yelling = []
+for row in no_AskHistorians_noURLs["text"]:
+    screams = scream_counter(str(row))
+    internet_yelling.append(screams)
+
+no_AskHistorians_noURLs["Yell_count"] = internet_yelling
+
+any_bad = []
+for row in no_AskHistorians_noURLs["text"]:
+    if any(str(word) in str(row) for word in bad_words):
+        any_bad.append(1)
+    else: any_bad.append(0)
+
+no_AskHistorians_noURLs["Google_curses"] = any_bad
+
+emoji_counts = []
+for row in no_AskHistorians_noURLs["text"]:
+    emoji_num = len(emoji_counter(str(row)))
+    emoji_counts.append(emoji_num)
+
+no_AskHistorians_noURLs["Num_emoji"] = emoji_counts
+
+
+
+#sns.boxplot( x=combined_data["source"], y=combined_data["text_standard"] )
+
+# split data into X and y
+#X = no_AskHistorians.loc[:,["text_standard","Google_curses","Num_emoji","Yell_count"]]
+X = no_AskHistorians_noURLs.iloc[:,3:16]
+Y = no_AskHistorians_noURLs['source'] # "source" is the column of numeric sources
+
+# split data into train and test sets
+seed = 8
+test_size = 0.2
+X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=test_size, random_state=seed)
+
+# This time we will scale the data correctly
+scaler = preprocessing.StandardScaler().fit(X_train)
+X_train = scaler.transform(X_train)
+X_test = scaler.transform(X_test) 
+
+# fit model no training data
+model = XGBClassifier()
+model.fit(X_train, y_train)
+# make predictions for test data
+y_pred = model.predict(X_test)
+predictions = [round(value) for value in y_pred]
+# evaluate predictions
+accuracy = accuracy_score(y_test, predictions)
+print("Accuracy: %.2f%%" % (accuracy * 100.0)) #73.84%, so no real change?
+

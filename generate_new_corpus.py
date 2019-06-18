@@ -247,8 +247,9 @@ Governmental          215
 new_corpus.to_csv("./data/190615_corpus.csv")
 #%%
 """
-Additional things I noticed while skimming the file in Sublime
-HTML for > and & was still in the Reddit posts
+Additional things I noticed while skimming the file in Sublime:
+    
+HTML for > (&gt;) and & was still in the Reddit posts
 Need to remove hallmarks of deleted posts and removed comments (may skew algo)
 [0-9]*,\[removed\],AskHistorians,Slack-like
 [0-9]*,\[deleted\],AskHistorians,Slack-like
@@ -258,8 +259,9 @@ This submission has been removed.",datascience,Slack-like
 
 &#8230; should be ...
 &#8211; should be -
-&#8216; shoudl be 
+&#8216; shoudl be ‘
 &#[0-9]*; to find all the weird XML formatting bugs
+
 
 Still have some oddball <0x84> stuff floating in the Governmental text.
 """
@@ -360,8 +362,6 @@ all_diss_pages3 = [''.join(i) for i in all_diss_pages]
 Adding docs, part 2, after manual inspection of the csv files.
 """
 #%%
-
-
 df_gov2 = pd.DataFrame(all_gov_pages3, columns=["text"])
 df_gov2["source"] = "Governmental"
 df_diss2 = pd.DataFrame(all_diss_pages3, columns=["text"])
