@@ -680,3 +680,92 @@ plt.legend(prop = {'size': 8}, title = 'Data source', loc = 'best')
 plt.title('Density Plot with Multiple Text Sources')
 plt.xlabel('Sentiment Intensity: Compound')
 plt.ylabel('Density')
+
+#%%
+"""
+Part of Speech tagging using NLTK. Note: I'm scaling the POS counts by the
+document length so that it doesn't become a proxy for length (which I don't want
+to train on.)
+"""
+#%%
+noAH_noURL_wordtokens = []
+for document in no_AskHistorians_noURLs["text"]:
+    tokens = nltk.word_tokenize(str(document))
+    noAH_noURL_wordtokens.append(tokens)
+
+noAH_noURL_wordpos = []
+for document in noAH_noURL_wordtokens:
+    pos = nltk.pos_tag(document) #default is Penn Treebank tagset
+    noAH_noURL_wordpos.append(pos)
+    
+from collections import Counter
+pos_keys = ['CC', 'CD','DT','EX','FW','IN', 'JJ','JJR','JJS','LS','MD','NN','NNS',
+            'NNP','NNPS','PDT','POS','PRP','PRP$','RB','RBR' ,'RBS','RP', 'SYM','TO',
+            'UH','VB', 'VBD', 'VBG','VBN','VBP','VBZ','WDT','WP','WP$','WRB']
+pos_counts = []
+
+for document in noAH_noURL_wordpos:
+    doc_length = len(document)
+    mini_dict = Counter([pos for word,pos in document])
+    scaled_dict = {k: v / doc_length for k, v in mini_dict.items()}
+#    for pos in pos_keys:
+#        if pos not in mini_dict:
+#            mini_dict[pos] = 0
+    pos_counts.append(scaled_dict)
+
+pos_df = pd.DataFrame(pos_counts)
+pos_df = pos_df.fillna(0)
+
+no_AskHistorians_noURLs_pos = pd.concat([no_AskHistorians_noURLs,pos_df], axis = 1)
+
+#%%
+"""
+At the risk of crazy feature bloat, let's try this!
+"""
+#%%
+# split data into X and y
+X = no_AskHistorians_noURLs_pos.iloc[:,3:65]
+Y = no_AskHistorians_noURLs_pos['source'] # "source" is the column of numeric sources
+
+# split data into train and test sets
+seed = 8
+test_size = 0.2
+X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=test_size, random_state=seed)
+
+# This time we will scale the data correctly
+scaler = preprocessing.StandardScaler().fit(X_train)
+X_train = scaler.transform(X_train)
+X_test = scaler.transform(X_test) 
+
+# fit model no training data
+model = XGBClassifier()
+model.fit(X_train, y_train)
+# make predictions for test data
+y_pred = model.predict(X_test)
+predictions = [round(value) for value in y_pred]
+# evaluate predictions
+accuracy = accuracy_score(y_test, predictions)
+print("Accuracy: %.2f%%" % (accuracy * 100.0))
+
+# Plot normalized confusion matrix
+plot_confusion_matrix(y_test, y_pred, classes = y_test, normalize=True,
+                      title='Normalized confusion matrix')
+#%%
+"""
+Exploring the more obscure POS
+"""
+#%%
+# CForeign Words
+for source in sources:
+    # Subset to the airline
+    subset = no_AskHistorians_noURLs_pos[no_AskHistorians_noURLs_pos['source'] == source]
+    # Draw the density plot
+    sns.distplot(subset['FW'], hist = False, kde = True,
+                 kde_kws = {'linewidth': 3},
+                 label = source)
+    
+# Plot formatting
+plt.legend(prop = {'size': 8}, title = 'Data source', loc = 'best')
+plt.title('Density Plot with Multiple Text Sources')
+plt.xlabel('POS: Foreign Words')
+plt.ylabel('Density')
