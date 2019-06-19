@@ -5,6 +5,8 @@ Created on Wed Jun 19 10:16:11 2019
 
 @author: amandakomuro
 """
+import pandas as pd
+import numpy as np
 import pickle
 from xgboost import XGBClassifier
 from sklearn.model_selection import train_test_split
@@ -21,16 +23,14 @@ from sklearn.utils.multiclass import unique_labels
 Load pickled dataframe
 """
 #%% 
-
-
-
+combined_data = pickle.load(open("../data/pickled_corpus_w_features.sav", 'rb'))
 #%%
 """
-Test that model still performs the same as during prototyping
+Test that model still performs the same as during prototyping. Still getting 77.83%
 """
 #%% 
 # split data into X and y
-X = combined_data.iloc[:,3:65]
+X = combined_data.iloc[:,3:]
 Y = combined_data['source'] # "source" is the column of numeric sources
 
 # split data into train and test sets
@@ -58,7 +58,7 @@ print("Accuracy: %.2f%%" % (accuracy * 100.0))
 Pickle the model for import in web app
 """
 #%% 
-filename = './insight2019/flask_app/my_flask/model/finalized_XGBoost_model.sav'
+filename = '../insight2019/flask_app/my_flask/model/finalized_XGBoost_model.sav'
 pickle.dump(model, open(filename, 'wb'))
 
 #%%

@@ -211,9 +211,22 @@ combined_data["Yell_count"].value_counts()
 
 #%%
 """
-Test that model still performs the same as during prototyping
+I tested that the model still performs the same as during prototyping, so now
+we'll save the combined_data dataframe via pickle.
 """
 #%% 
+import pickle
+filename = '../pickled_corpus_w_features.sav'
+pickle.dump(combined_data, open(filename, 'wb'))
+#%%
+"""
+I tested that the model still performs the same as during prototyping, so now
+we'll save the combined_data dataframe via pickle.
+"""
+#%% 
+
+
+
 from xgboost import XGBClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
@@ -319,28 +332,42 @@ plot_confusion_matrix(y_test, y_pred, classes = y_test, normalize=True,
 """
 Sanity check: test specific items to see why they were labeled
 """
-##%%
-#import lime
-#import lime.lime_tabular
-#
-## create lambda function to return probability of the target variable given a set of features
-#predict_fn_xgb = lambda x: model.predict_proba(x).astype(float)
-##create list of feature names to be used later
-#feature_names = combined_data.columns[3:].tolist()
-##create LIME explainer
-#explainer = lime.lime_tabular.LimeTabularExplainer(X_train, 
-#                                                   feature_names = feature_names, 
-#                                                   class_names = ['1', '2','3','4','5'],
-#                                                   kernel_width = 3)
-#
-#lime_labled_tuples = list(zip(y_test, predictions))
-#lime_labeled_df = pd.DataFrame(lime_labled_tuples, columns = ["true_score", "predicted_score"])
-#
-#observation_to_check = 190 #used Variable explorer to figure this out
-#exp = explainer.explain_instance(X_test[observation_to_check], 
-#                                 predict_fn_xgb, 
-#                                 num_features = len(feature_names))
-#
-#import pickle
-#filename = '../pickled_LIME_5_as_2.sav'
-#pickle.dump(exp, open(filename, 'wb'))
+#%%
+import lime
+import lime.lime_tabular
+
+# create lambda function to return probability of the target variable given a set of features
+predict_fn_xgb = lambda x: model.predict_proba(x).astype(float)
+#create list of feature names to be used later
+feature_names = combined_data.columns[3:].tolist()
+#create LIME explainer
+explainer = lime.lime_tabular.LimeTabularExplainer(X_train, 
+                                                   feature_names = feature_names, 
+                                                   class_names = ['1', '2','3','4','5'],
+                                                   kernel_width = 3)
+
+lime_labled_tuples = list(zip(y_test, predictions))
+lime_labeled_df = pd.DataFrame(lime_labled_tuples, columns = ["true_score", "predicted_score"])
+
+observation_to_check = 392 #used Variable explorer to figure this out
+exp = explainer.explain_instance(X_test[observation_to_check], 
+                                 predict_fn_xgb, 
+                                 num_features = len(feature_names))
+
+import pickle
+filename = '../pickled_LIME_5_as_5.sav'
+pickle.dump(exp, open(filename, 'wb'))
+#%%
+"""
+Further sanity check: using Tree SHAP instead of LIME
+"""
+#%%
+import shap
+
+X_train_labeled = pd.DataFrame(X_train, columns = X.columns)
+
+explainer = shap.TreeExplainer(model)
+shap_values = explainer.shap_values(X_train_labeled)
+shap.summary_plot(shap_values, X_train_labeled)
+
+shap.summary_plot(shap_values[0], X_train_labeled)
