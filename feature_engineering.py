@@ -10,6 +10,9 @@ Custom functions for feature engineering
 #%%
 import nltk
 import textstat as ts
+import emoji
+import regex
+import re
 
 def textstat_stats(text):
     flesch_ease = ts.flesch_reading_ease(text) #Flesch Reading Ease Score
@@ -20,7 +23,7 @@ def textstat_stats(text):
     cl_index = ts.coleman_liau_index(text) #grade level of the text using the Coleman-Liau Formula.
     lw_formula = ts.linsear_write_formula(text) #grade level using the Linsear Write Formula.
     dcr_score = ts.dale_chall_readability_score(text) #uses a lookup table of the most commonly used 3000 English words
-    text_standard = textstat.text_standard(text, float_output=False) # summary of all the grade level functions
+    text_standard = ts.text_standard(text, float_output=False) # summary of all the grade level functions
     syll_count = ts.syllable_count(text, lang='en_US')
     lex_count = ts.lexicon_count(text, removepunct=True)
     idx = ['flesch_ease', 'flesch_grade','gfog',
@@ -30,10 +33,6 @@ def textstat_stats(text):
                       auto_readability, cl_index, lw_formula, 
                       dcr_score, text_standard, syll_count, lex_count], index = idx)
 
-
-import emoji
-import regex
-
 def emoji_counter(text):
     emoji_list = []
     data = regex.findall(r'\X', text)
@@ -42,8 +41,6 @@ def emoji_counter(text):
             emoji_list.append(word)
     return emoji_list
 
-
-import re
 def scream_counter(text):
     crazy_confused = len(re.findall(r'!\?|\?!', text))
     ahhhh = len(re.findall(r'!!', text))
@@ -60,7 +57,7 @@ Final cleaning of the final corpus (190617):
 """
 #%% 
 # remove AskHistorians and reset index (this is important)
-all_data = pd.read_csv("./data/190617_corpus.csv", index_col = 0)
+all_data = pd.read_csv("../data/190617_corpus.csv", index_col = 0)
 clean_data = all_data.loc[all_data["subreddit"] != "AskHistorians",:]
 clean_data = clean_data.reset_index(drop=True) 
 
@@ -80,6 +77,8 @@ clean_data["source"].value_counts()
 # maybe also remove rows that end up with nothing left in the text?
 #clean_data = clean_data[clean_data["text"] != ' ']
 #clean_data = clean_data[clean_data["text"] != '']
+
+clean_data = clean_data.reset_index(drop=True)
 #%%
 """
 First create features from NLP packages:
@@ -96,7 +95,6 @@ for i in clean_data["text"]: #textstat needs a string
     textstat_results = textstat_results.append(results, ignore_index=True) #so that index is continuous
 
 # Resetting indices here may be unneccesary
-clean_data = clean_data.reset_index(drop=True)
 textstat_results = textstat_results.reset_index(drop=True)
 
 combined_data = pd.concat([clean_data, textstat_results], axis = 1)
@@ -131,7 +129,7 @@ for document in combined_data_wordpos:
 pos_df = pd.DataFrame(pos_counts)
 pos_df = pos_df.fillna(0)
 
-combined_data = pd.concat([combined_data,pos_df], axis = 1)
+combined_data = pd.concat([combined_data, pos_df], axis = 1)
 #%%
 """
 Add sentiment intensity
@@ -171,7 +169,7 @@ combined_data["SIA_com"] = sia_comp
 Now for the custom features
 """
 #%%   
-Google_Curses = pd.read_csv("./data/RobertJGabriel_Google_swear_words.txt", header = None)
+Google_Curses = pd.read_csv("../data/RobertJGabriel_Google_swear_words.txt", header = None)
 bad_words = Google_Curses[0].tolist()
 
 any_bad = []
@@ -181,7 +179,7 @@ for row in combined_data["text"]:
     else: any_bad.append(0)
 
 combined_data["Google_curses"] = any_bad
-combined_data["Google_curses"].value_counts() #much better, only 5817 with a curse
+combined_data["Google_curses"].value_counts()
 
 
 emoji_counts = []
@@ -201,7 +199,111 @@ for row in combined_data["text"]:
 combined_data["Yell_count"] = internet_yelling
 combined_data["Yell_count"].value_counts()
 
+#%%
+"""
+Test that model still performs the same as during prototyping
+"""
+#%% 
+from xgboost import XGBClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+from sklearn import preprocessing
+
+# split data into X and y
+X = combined_data.iloc[:,3:65]
+Y = combined_data['source'] # "source" is the column of numeric sources
+
+# split data into train and test sets
+seed = 8
+test_size = 0.2
+X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=test_size, random_state=seed)
+
+# This time we will scale the data correctly
+scaler = preprocessing.StandardScaler().fit(X_train)
+X_train = scaler.transform(X_train)
+X_test = scaler.transform(X_test) 
+
+# fit model no training data
+model = XGBClassifier()
+model.fit(X_train, y_train)
+# make predictions for test data
+y_pred = model.predict(X_test)
+predictions = [round(value) for value in y_pred]
+# evaluate predictions
+accuracy = accuracy_score(y_test, predictions)
+print("Accuracy: %.2f%%" % (accuracy * 100.0))
+
+#%%
+"""
+Confusion matrix
+"""
+#%% 
+
+import matplotlib.pyplot as plt
+import matplotlib.patheffects as PathEffects
+import seaborn as sns
+
+from sklearn.metrics import confusion_matrix
+from sklearn.utils.multiclass import unique_labels
+
+def plot_confusion_matrix(y_true, y_pred, classes,
+                          normalize=False,
+                          title=None,
+                          cmap=plt.cm.Blues):
+    """
+    This function prints and plots the confusion matrix.
+    Normalization can be applied by setting `normalize=True`.
+    """
+    if not title:
+        if normalize:
+            title = 'Normalized confusion matrix'
+        else:
+            title = 'Confusion matrix, without normalization'
+
+    # Compute confusion matrix
+    cm = confusion_matrix(y_true, y_pred)
+    # Only use the labels that appear in the data
+    classes = unique_labels(y_true)
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        print("Normalized confusion matrix")
+    else:
+        print('Confusion matrix, without normalization')
+
+    print(cm)
+
+    fig, ax = plt.subplots()
+    im = ax.imshow(cm, interpolation='nearest', cmap=cmap)
+    ax.figure.colorbar(im, ax=ax)
+    # We want to show all ticks...
+    ax.set(xticks=np.arange(cm.shape[1]),
+           yticks=np.arange(cm.shape[0]),
+           # ... and label them with the respective list entries
+           xticklabels=classes, yticklabels=classes,
+           title=title,
+           ylabel='True label',
+           xlabel='Predicted label')
+
+    # Rotate the tick labels and set their alignment.
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
+             rotation_mode="anchor")
+
+    # Loop over data dimensions and create text annotations.
+    fmt = '.2f' if normalize else 'd'
+    thresh = cm.max() / 2.
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            ax.text(j, i, format(cm[i, j], fmt),
+                    ha="center", va="center",
+                    color="white" if cm[i, j] > thresh else "black")
+    fig.tight_layout()
+    return ax
 
 
+np.set_printoptions(precision=2)
+
+# Plot normalized confusion matrix
+plot_confusion_matrix(y_test, y_pred, classes = y_test, normalize=True,
+                      title='Normalized confusion matrix')
 
 
