@@ -15,23 +15,30 @@ import regex
 import re
 
 def textstat_stats(text):
+    doc_length = len(text.split()) 
     flesch_ease = ts.flesch_reading_ease(text) #Flesch Reading Ease Score
     flesch_grade = ts.flesch_kincaid_grade(text) #Flesch-Kincaid Grade Level
     gfog = ts.gunning_fog(text) # FOG index, also indicates grade level
-    #smog = ts.smog_index(text) # SMOG index, also indicates grade level, only useful on 30+ sentences
+#    smog = ts.smog_index(text) # SMOG index, also indicates grade level, only useful on 30+ sentences
     auto_readability = ts.automated_readability_index(text) #approximates the grade level needed to comprehend the text.
     cl_index = ts.coleman_liau_index(text) #grade level of the text using the Coleman-Liau Formula.
     lw_formula = ts.linsear_write_formula(text) #grade level using the Linsear Write Formula.
     dcr_score = ts.dale_chall_readability_score(text) #uses a lookup table of the most commonly used 3000 English words
-    text_standard = ts.text_standard(text, float_output=False) # summary of all the grade level functions
+#    text_standard = ts.text_standard(text, float_output=False) # summary of all the grade level functions
     syll_count = ts.syllable_count(text, lang='en_US')
+    syll_count_scaled = syll_count / doc_length
     lex_count = ts.lexicon_count(text, removepunct=True)
+    lex_count_scaled = lex_count / doc_length
     idx = ['flesch_ease', 'flesch_grade','gfog',
            'auto_readability','cl_index','lw_formula',
-           'dcr_score', 'text_standard', 'syll_count', 'lex_count']
+           'dcr_score', 
+#           'text_standard', 
+           'syll_count', 'lex_count']
     return pd.Series([flesch_ease, flesch_grade, gfog, 
                       auto_readability, cl_index, lw_formula, 
-                      dcr_score, text_standard, syll_count, lex_count], index = idx)
+                      dcr_score, 
+#                      text_standard, 
+                      syll_count_scaled, lex_count_scaled], index = idx)
 
 def emoji_counter(text):
     emoji_list = []
@@ -75,9 +82,10 @@ clean_data = clean_data.dropna(subset=['source'], axis = 0) #remove 1 weird row
 clean_data["source"].value_counts()
 
 # maybe also remove rows that end up with nothing left in the text?
-#clean_data = clean_data[clean_data["text"] != ' ']
-#clean_data = clean_data[clean_data["text"] != '']
-
+doc_lengths = [len(text.strip().split()) for text in clean_data['text']]
+clean_data["doc_length"] = doc_lengths
+clean_data = clean_data[clean_data["doc_length"] != 0]
+clean_data = clean_data.drop(["doc_length"], axis=1)
 clean_data = clean_data.reset_index(drop=True)
 #%%
 """
@@ -305,5 +313,32 @@ np.set_printoptions(precision=2)
 # Plot normalized confusion matrix
 plot_confusion_matrix(y_test, y_pred, classes = y_test, normalize=True,
                       title='Normalized confusion matrix')
-
-
+#%%
+"""
+Sanity check: test specific items to see why they were labeled
+"""
+##%%
+#import lime
+#import lime.lime_tabular
+#
+## create lambda function to return probability of the target variable given a set of features
+#predict_fn_xgb = lambda x: model.predict_proba(x).astype(float)
+##create list of feature names to be used later
+#feature_names = combined_data.columns[3:].tolist()
+##create LIME explainer
+#explainer = lime.lime_tabular.LimeTabularExplainer(X_train, 
+#                                                   feature_names = feature_names, 
+#                                                   class_names = ['1', '2','3','4','5'],
+#                                                   kernel_width = 3)
+#
+#lime_labled_tuples = list(zip(y_test, predictions))
+#lime_labeled_df = pd.DataFrame(lime_labled_tuples, columns = ["true_score", "predicted_score"])
+#
+#observation_to_check = 190 #used Variable explorer to figure this out
+#exp = explainer.explain_instance(X_test[observation_to_check], 
+#                                 predict_fn_xgb, 
+#                                 num_features = len(feature_names))
+#
+#import pickle
+#filename = '../pickled_LIME_5_as_2.sav'
+#pickle.dump(exp, open(filename, 'wb'))
