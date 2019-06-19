@@ -96,7 +96,9 @@ First create features from NLP packages:
 #%%    
 ## Starting with textstat  
 textstat_results = pd.DataFrame(columns = ['flesch_ease', 'flesch_grade','gfog',
-           'auto_readability','cl_index','lw_formula','dcr_score', 'text_standard', 'syll_count', 'lex_count'])
+           'auto_readability','cl_index','lw_formula','dcr_score', 
+#           'text_standard', 
+           'syll_count', 'lex_count'])
 
 for i in clean_data["text"]: #textstat needs a string
     results = textstat_stats(str(i))
