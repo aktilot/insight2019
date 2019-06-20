@@ -43,15 +43,17 @@ scaler = preprocessing.StandardScaler().fit(X_train)
 X_train = scaler.transform(X_train)
 X_test = scaler.transform(X_test) 
 
-# fit model no training data
+# fit model to training data
 model = XGBClassifier()
 model.fit(X_train, y_train)
 # make predictions for test data
-y_pred = model.predict(X_test)
-predictions = [round(value) for value in y_pred]
-# evaluate predictions
-accuracy = accuracy_score(y_test, predictions)
-print("Accuracy: %.2f%%" % (accuracy * 100.0))
+y_pred = model.predict_proba(X_test)
+#predictions = [round(value) for value in y_pred]
+## evaluate predictions
+#accuracy = accuracy_score(y_test, predictions)
+#print("Accuracy: %.2f%%" % (accuracy * 100.0))
+
+
 
 #%%
 """
@@ -60,6 +62,9 @@ Pickle the model for import in web app
 #%% 
 filename = '../insight2019/flask_app/my_flask/model/finalized_XGBoost_model.sav'
 pickle.dump(model, open(filename, 'wb'))
+
+filename = '../insight2019/flask_app/my_flask/model/finalized_XGBoost_scaler.sav'
+pickle.dump(scaler, open(filename, 'wb'))
 
 #%%
 """
