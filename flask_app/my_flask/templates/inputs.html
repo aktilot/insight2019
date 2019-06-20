@@ -45,10 +45,18 @@
     <div class="container">
         <form action="/output" method="POST">
           <div class="form-group">
-            <label for="user_text">Enter your message text below:</label>
+            <label for="user_text">Enter your message below:</label>
             <textarea class="form-control" type="text" name="user_text" id="user_text" rows="10" cols="30"></textarea>
           </div>
-          <button type="submit">Analyze!</button>
+          Choose your audience:  <select name = "goal_category" method="GET" action="/output">
+          {% for sources in goal_category %}
+          <option value= "{{sources}}" SELECTED>{{sources}}</option>"
+          {% endfor %}
+          </select>
+
+           <div>
+            <button type="submit">Analyze!</button>
+          </div>
         </form>
     </div>
  </body>

@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from flask import Flask, render_template, request
 import requests
 import pandas as pd
@@ -17,14 +18,12 @@ from nltk.sentiment.vader import SentimentIntensityAnalyzer as SIA
 app = Flask(__name__, static_url_path='/static')
 
 
-#Standard home page. 'index.html' is the file in your templates that has the CSS and HTML for your app
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    return render_template('index.html')
-
 ### Load the pickled objects for my model and other needed parts.
 model = pickle.load(open("./model/finalized_XGBoost_model.sav", 'rb'))
 scaler = pickle.load(open("./model/finalized_XGBoost_scaler.sav", 'rb'))
+
+id_to_source = {0: 'Extremely Casual',1:'Company IM', 2:'Workplace Casual', 3:'Reports', 4:'Dissertations'}
+
 
 """
 Custom functions for feature engineering
@@ -68,10 +67,12 @@ def scream_counter(text):
     return screams
 
 
+
 def process_user_text(user_text, goal_category):
     #put user input text string into a DataFrame
     clean_data = pd.DataFrame(user_text, columns = ["text"]) 
     clean_data["source"] = goal_category
+    clean_data["subreddit"] = "placeholder"
 
     ## Starting with textstat  
     textstat_results = pd.DataFrame(columns = ['flesch_ease', 'flesch_grade','gfog',
@@ -98,11 +99,20 @@ def process_user_text(user_text, goal_category):
         pos = nltk.pos_tag(document) #default is Penn Treebank tagset
         combined_data_wordpos.append(pos)
         
+    pos_keys = ['#', '$', '“', '(', ')', ',', '.', ':', 'CC', 'CD', 'DT', 'EX', 
+                'FW', 'IN', 'JJ', 'JJR', 'JJS','LS', 'MD', 'NN', 'NNP', 'NNPS', 
+                'NNS', 'PDT', 'POS', 'PRP', 'PRP$','RB', 'RBR', 'RBS', 'RP', 
+                'SYM', 'TO', 'UH', 'VB', 'VBD', 'VBG', 'VBN','VBP', 'VBZ', 
+                'WDT', 'WP', 'WP$', 'WRB', '”']
+
     pos_counts = []
 
     for document in combined_data_wordpos:
         doc_length = len(document)
         mini_dict = Counter([pos for word,pos in document])
+        for pos in pos_keys:
+            if pos not in mini_dict:
+                mini_dict[pos] = 0
         scaled_dict = {k: v / doc_length for k, v in mini_dict.items()}
         pos_counts.append(scaled_dict)
 
@@ -175,7 +185,7 @@ def get_professionalism_score(user_df):
     combined_data = user_df
 
     # split data into X and y
-    userX = combined_data.iloc[:,2:] #column0 = text string, column1 = goal_category as "source"
+    userX = combined_data.iloc[:,3:] #columns 0-2 are the text and categories
     userY = combined_data['source'] # "source" is the column of numeric sources
 
     # scale the data using scaler trained on original corpus
@@ -185,9 +195,9 @@ def get_professionalism_score(user_df):
     # make predictions for test data
     y_probs = model.predict_proba(userX)
     
-    top_two_classes = y_pred[0].argsort()[-2:][::-1]
-    first_class_prob = y_pred[0][top_two_classes[0]]
-    second_class_prob = y_pred[0][top_two_classes[1]]
+    top_two_classes = y_probs[0].argsort()[-2:][::-1]
+    first_class_prob = y_probs[0][top_two_classes[0]]
+    second_class_prob = y_probs[0][top_two_classes[1]]
     class_diff = first_class_prob - second_class_prob 
 
     if class_diff > 0.2: # if the choice was clear, go with highest prob class
@@ -198,10 +208,19 @@ def get_professionalism_score(user_df):
     return user_prof_score
 
 
-#Back to defining views
-@app.route('/input', methods=['GET', 'POST'])
+
+#Standard home page. 'index.html' is the file in your templates that has the CSS and HTML for your app
+# @app.route('/', methods=['GET', 'POST'])
+# def index():
+#     return render_template('index.html')
+
+# @app.route('/input', methods=['GET', 'POST'])
+ 
+@app.route('/', methods=['GET', 'POST'])
 def get_inputs():
-    return render_template('inputs.html')
+  sources = list(id_to_source.values())
+  return render_template("inputs.html", goal_category = sources)
+
 
 @app.route('/output', methods=['GET', 'POST'])
 def get_outputs():
@@ -211,12 +230,13 @@ def get_outputs():
     # user_text = "This is a placeholder sentence."
 
     # read data (should be a string) and make it a list of length 1.
-    user_text1 = [i for i in user_text]
+    # user_text1 = [i for i in user_text]
+    user_text1 = [user_text]
 
-    user_df = process_user_text(user_text1, goal_category) #DataFrame with 1 row
+    user_df = process_user_text(user_text1, goal_category) # Returns a DataFrame with 1 row
 
     # run the model function
-    prof_score = "placeholder"
+    # prof_score = "placeholder"
     prof_score = get_professionalism_score(user_df)
 
     return render_template(
@@ -224,11 +244,11 @@ def get_outputs():
       values = { 
           'user_text': user_text if user_text else "No input.",
           'goal_category': goal_category if goal_category else "No input.",
-          'prof_score': prof_score if prof_score else "No result."
+          'prof_score': prof_score
       })
 
 
-
+# 'prof_score': prof_score if prof_score else "No result."
 
 
 

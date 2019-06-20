@@ -23,7 +23,8 @@ from sklearn.utils.multiclass import unique_labels
 Load pickled dataframe
 """
 #%% 
-combined_data = pickle.load(open("../data/pickled_corpus_w_features.sav", 'rb'))
+combined_data = pickle.load(open("./data/pickled_corpus_w_features.sav", 'rb'))
+combined_data = combined_data.drop(["text_standard"], axis=1)
 #%%
 """
 Test that model still performs the same as during prototyping. Still getting 77.83%
@@ -47,11 +48,11 @@ X_test = scaler.transform(X_test)
 model = XGBClassifier()
 model.fit(X_train, y_train)
 # make predictions for test data
-y_pred = model.predict_proba(X_test)
-#predictions = [round(value) for value in y_pred]
-## evaluate predictions
-#accuracy = accuracy_score(y_test, predictions)
-#print("Accuracy: %.2f%%" % (accuracy * 100.0))
+y_pred = model.predict(X_test)
+predictions = [round(value) for value in y_pred]
+# evaluate predictions
+accuracy = accuracy_score(y_test, predictions)
+print("Accuracy: %.2f%%" % (accuracy * 100.0))
 
 
 
@@ -60,10 +61,10 @@ y_pred = model.predict_proba(X_test)
 Pickle the model for import in web app
 """
 #%% 
-filename = '../insight2019/flask_app/my_flask/model/finalized_XGBoost_model.sav'
+filename = './insight2019/flask_app/my_flask/model/finalized_XGBoost_model.sav'
 pickle.dump(model, open(filename, 'wb'))
 
-filename = '../insight2019/flask_app/my_flask/model/finalized_XGBoost_scaler.sav'
+filename = './insight2019/flask_app/my_flask/model/finalized_XGBoost_scaler.sav'
 pickle.dump(scaler, open(filename, 'wb'))
 
 #%%
