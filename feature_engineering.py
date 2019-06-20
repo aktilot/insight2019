@@ -370,4 +370,5 @@ explainer = shap.TreeExplainer(model)
 shap_values = explainer.shap_values(X_train_labeled)
 shap.summary_plot(shap_values, X_train_labeled)
 
-shap.summary_plot(shap_values[0], X_train_labeled)
+#shap.summary_plot(shap_values[0], X_train_labeled)
+shap.force_plot(explainer.expected_value, shap_values[0], X_train_labeled.iloc[0,:])

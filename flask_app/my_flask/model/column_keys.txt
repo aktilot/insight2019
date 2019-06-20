@@ -1,0 +1,61 @@
+CC	Coordinating Conjunctions
+CD	Cardinal numbers
+DT	Determiners
+EX	Existential there 
+FW	Foreign words or misspellings
+IN	Preposition or subordinating conjunctions
+JJ	Adjectives
+JJR	Adjectives, comparative
+JJS	Adjectives, superlative
+LS	List item markers
+MD	Modal
+NN	Nouns, singular or mass
+NNS	Nouns, plural
+NNP	Proper nouns, singular
+NNPS	Proper nouns, plural
+PDT	Predeterminers
+POS	Possessive endings
+PRP	Personal pronouns
+PRP$	Possessive pronouns
+RB	Adverbs
+RBR	Adverbs, comparative
+RBS	Adverbs, superlative
+RP	Particles
+SYM	Symbols
+TO	to
+UH	Interjections
+VB	Verbs, base form
+VBD	Verbs, past tense
+VBG	Verbs, gerund or present participle
+VBN	Verbs, past participle
+VBP	Verbs, non-3rd person singular present
+VBZ	Verbs, 3rd person singular present
+WDT	Wh-determiners
+WP	Wh-pronouns
+WP$	Possessive wh-pronouns
+WRB	Wh-adverbs
+flesch_ease	Flesch Reading Ease
+flesch_grade	Flesch-Kincaid Grade Level
+gfog	FOG index 
+auto_readability	Auto-Readability Score
+cl_index	Coleman-Liau Grade Level
+lw_formula	Linsear Write Grade Level
+dcr_score	Commonly used English words
+syll_count	Average syllable count
+lex_count	Average lexicon count
+#	Pound sign
+$	Dollar sign
+''	Straight quotation marks
+(	Left parentheses
+)	Right parentheses
+``	Quotation marks
+,	Commas
+.	Periods
+:	Colons
+SIA_neg	Negative sentiment
+SIA_pos	Positive sentiment
+SIA_neu	Neutral sentiment
+SIA_com	Mixed sentiment
+Google_curses	Swearing
+Num_emoji	Emoji
+Yell_count	Internet yelling

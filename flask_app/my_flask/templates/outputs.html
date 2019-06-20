@@ -29,7 +29,7 @@
 </style>
 
 
-<title>Title</title>
+<title>Can I say that?</title>
 </head>
 <body>
 <div class="main">
@@ -38,13 +38,14 @@
   <div class="starter-template">
 
 <br><br>
-<h3>Your professionalism score (scale 0-1):</h3>
+<h3>Your professionalism score (scale 0-4):</h3>
   <div>
     <p>
       {{values.user_text}} <br>
     </p>
     <p>
-      {{values.prof_score}} <br>
+     Your text most closely matches category {{values.top_class}} ({{values.top_class_prob}}% match) <br>
+     The next closest match was category {{values.second_class}} ({{values.second_class_prob}}% match) <br>
     </p>
   </div>
 

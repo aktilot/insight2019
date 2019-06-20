@@ -21,6 +21,7 @@ app = Flask(__name__, static_url_path='/static')
 ### Load the pickled objects for my model and other needed parts.
 model = pickle.load(open("./model/finalized_XGBoost_model.sav", 'rb'))
 scaler = pickle.load(open("./model/finalized_XGBoost_scaler.sav", 'rb'))
+final_column_order = pickle.load(open("./model/finalized_column_order.sav", 'rb'))
 
 id_to_source = {0: 'Extremely Casual',1:'Company IM', 2:'Workplace Casual', 3:'Reports', 4:'Dissertations'}
 
@@ -99,11 +100,7 @@ def process_user_text(user_text, goal_category):
         pos = nltk.pos_tag(document) #default is Penn Treebank tagset
         combined_data_wordpos.append(pos)
         
-    pos_keys = ['#', '$', '“', '(', ')', ',', '.', ':', 'CC', 'CD', 'DT', 'EX', 
-                'FW', 'IN', 'JJ', 'JJR', 'JJS','LS', 'MD', 'NN', 'NNP', 'NNPS', 
-                'NNS', 'PDT', 'POS', 'PRP', 'PRP$','RB', 'RBR', 'RBS', 'RP', 
-                'SYM', 'TO', 'UH', 'VB', 'VBD', 'VBG', 'VBN','VBP', 'VBZ', 
-                'WDT', 'WP', 'WP$', 'WRB', '”']
+    pos_keys = final_column_order[12:57]
 
     pos_counts = []
 
@@ -178,6 +175,8 @@ def process_user_text(user_text, goal_category):
 
     combined_data["Yell_count"] = internet_yelling
 
+    combined_data = combined_data[final_column_order] # this may be extremely important.
+
     return combined_data
 
 
@@ -200,12 +199,13 @@ def get_professionalism_score(user_df):
     second_class_prob = y_probs[0][top_two_classes[1]]
     class_diff = first_class_prob - second_class_prob 
 
-    if class_diff > 0.2: # if the choice was clear, go with highest prob class
-        user_prof_score = top_two_classes[0]
-    else:  # if choice was close, go with a value in between
-        user_prof_score = min(top_two_classes[0], top_two_classes[1]) + 0.5
+    # if class_diff > 0.2: # if the choice was clear, go with highest prob class
+    #     user_prof_score = top_two_classes[0]
+    # else:  # if choice was close, go with a value in between
+    #     user_prof_score = min(top_two_classes[0], top_two_classes[1]) + 0.5
     
-    return user_prof_score
+    # return user_prof_score
+    return top_two_classes, first_class_prob, second_class_prob
 
 
 
@@ -237,14 +237,19 @@ def get_outputs():
 
     # run the model function
     # prof_score = "placeholder"
-    prof_score = get_professionalism_score(user_df)
+    # prof_score = get_professionalism_score(user_df)
+    top_two_classes, first_class_prob, second_class_prob = get_professionalism_score(user_df)
 
     return render_template(
       "outputs.html", 
       values = { 
           'user_text': user_text if user_text else "No input.",
           'goal_category': goal_category if goal_category else "No input.",
-          'prof_score': prof_score
+          # 'prof_score': prof_score,
+          'top_class': top_two_classes[0],
+          'second_class': top_two_classes[1],
+          'top_class_prob': first_class_prob,
+          'second_class_prob': second_class_prob
       })
 
 

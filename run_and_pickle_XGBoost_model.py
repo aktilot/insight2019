@@ -25,6 +25,8 @@ Load pickled dataframe
 #%% 
 combined_data = pickle.load(open("./data/pickled_corpus_w_features.sav", 'rb'))
 combined_data = combined_data.drop(["text_standard"], axis=1)
+
+final_col_order = combined_data.columns.tolist()
 #%%
 """
 Test that model still performs the same as during prototyping. Still getting 77.83%
@@ -66,6 +68,10 @@ pickle.dump(model, open(filename, 'wb'))
 
 filename = './insight2019/flask_app/my_flask/model/finalized_XGBoost_scaler.sav'
 pickle.dump(scaler, open(filename, 'wb'))
+
+filename = './insight2019/flask_app/my_flask/model/finalized_column_order.sav'
+pickle.dump(final_col_order, open(filename, 'wb'))
+
 
 #%%
 """
@@ -131,5 +137,53 @@ np.set_printoptions(precision=2)
 # Plot normalized confusion matrix
 plot_confusion_matrix(y_test, y_pred, classes = y_test, normalize=True,
                       title='Normalized confusion matrix')
+
+
+#%%
+"""
+Validation curve - am I overfitting??
+Tutorial adapted from: https://chrisalbon.com/machine_learning/model_evaluation/plot_the_validation_curve/
+"""
+#%%
+#
+#from sklearn.model_selection import validation_curve
+#
+## Create range of values for parameter
+#param_range = np.arange(1, 250, 2)
+#
+## Calculate accuracy on training and test set using range of parameter values
+#train_scores, test_scores = validation_curve(XGBClassifier(), 
+#                                             X, 
+#                                             Y, 
+#                                             param_name="n_estimators", 
+#                                             param_range=param_range,
+#                                             cv=3, 
+#                                             scoring="accuracy", 
+#                                             n_jobs=-1)
+#
+#
+## Calculate mean and standard deviation for training set scores
+#train_mean = np.mean(train_scores, axis=1)
+#train_std = np.std(train_scores, axis=1)
+#
+## Calculate mean and standard deviation for test set scores
+#test_mean = np.mean(test_scores, axis=1)
+#test_std = np.std(test_scores, axis=1)
+#
+## Plot mean accuracy scores for training and test sets
+#plt.plot(param_range, train_mean, label="Training score", color="black")
+#plt.plot(param_range, test_mean, label="Cross-validation score", color="dimgrey")
+#
+## Plot accurancy bands for training and test sets
+#plt.fill_between(param_range, train_mean - train_std, train_mean + train_std, color="gray")
+#plt.fill_between(param_range, test_mean - test_std, test_mean + test_std, color="gainsboro")
+#
+## Create plot
+#plt.title("Validation Curve With Random Forest")
+#plt.xlabel("Number Of Trees")
+#plt.ylabel("Accuracy Score")
+#plt.tight_layout()
+#plt.legend(loc="best")
+#plt.show()
 
 
