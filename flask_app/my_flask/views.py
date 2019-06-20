@@ -12,6 +12,7 @@ import emoji
 import regex
 import re
 from nltk.sentiment.vader import SentimentIntensityAnalyzer as SIA
+import shap
 
 
 #Initialize app
@@ -23,7 +24,8 @@ model = pickle.load(open("./model/finalized_XGBoost_model.sav", 'rb'))
 scaler = pickle.load(open("./model/finalized_XGBoost_scaler.sav", 'rb'))
 final_column_order = pickle.load(open("./model/finalized_column_order.sav", 'rb'))
 
-id_to_source = {0: 'Extremely Casual',1:'Company IM', 2:'Workplace Casual', 3:'Reports', 4:'Dissertations'}
+id_to_source = {0: 'Extremely Casual', 1: 'Company IM', 2: 'Workplace Casual', 3: 'Reports', 4: 'Dissertations'}
+source_to_id = {'Extremely Casual': 0 ,'Company IM': 1, 'Workplace Casual': 2, 'Reports': 3, 'Dissertations': 4}
 
 
 """
@@ -208,6 +210,58 @@ def get_professionalism_score(user_df):
     return top_two_classes, first_class_prob, second_class_prob
 
 
+def get_SHAP_results(user_df, user_category, goal_category):
+    
+    with open("./model/column_keys.txt") as fin:
+         rows = ( line.strip().split('\t') for line in fin )
+         column_dict = { row[0]:row[1:] for row in rows }
+    
+    
+    #starting with output from process_user_text()
+    X_train_labeled = pd.DataFrame(user_df, columns = user_df.columns[3:])
+    #set up the SHAP explainer for the XGBoost model and calc SHAP scores
+    explainer = shap.TreeExplainer(model)
+    shap_values = explainer.shap_values(X_train_labeled) # list of lists, outer lists
+    # are the categories, inner list is feature contributions to that category
+    
+    # re-arrange SHAP values so they're easy to give back to user
+    source0_shap=pd.DataFrame(data=shap_values[0], columns=user_df.columns[3:], index=[0])
+    source1_shap=pd.DataFrame(data=shap_values[1], columns=user_df.columns[3:], index=[1])
+    source2_shap=pd.DataFrame(data=shap_values[2], columns=user_df.columns[3:], index=[2])
+    source3_shap=pd.DataFrame(data=shap_values[3], columns=user_df.columns[3:], index=[3])
+    source4_shap=pd.DataFrame(data=shap_values[4], columns=user_df.columns[3:], index=[4])
+    
+    user_reasoning=pd.concat([source0_shap,
+                              source1_shap,
+                              source2_shap,
+                              source3_shap,
+                              source4_shap])
+    user_reasoning = user_reasoning.transpose()
+    
+    # make sure to translate the written sources into numeric
+    goal_numeric = source_to_id[goal_category]
+    
+    #Why did user text get it's particular score?
+    user_category_reasoning = user_reasoning.sort_values(by=[user_category], ascending=False)
+    user_category_reasoning_labels = user_category_reasoning.index.values[0:3]
+    user_category_reasoning_labels = [column_dict[feature] for feature in user_category_reasoning_labels] 
+
+    
+    # What features diminished their odds of being labeled as their goal?
+    user_goal_improvement = user_reasoning.sort_values(by=[goal_numeric], ascending=True)
+    user_goal_improvement_labels = user_goal_improvement.index.values[0:3]
+    user_goal_improvement_labels = [column_dict[feature] for feature in user_goal_improvement_labels] 
+
+    
+    # What features improved their odds of being labeled as their goal?
+    user_goal_encouragement = user_reasoning.sort_values(by=[goal_numeric], ascending=False)
+    user_goal_encouragement_labels = user_goal_encouragement.index.values[0:3]
+    user_goal_encouragement_labels = [column_dict[feature] for feature in user_goal_encouragement_labels] 
+    
+    return user_category_reasoning_labels, user_goal_improvement_labels, user_goal_encouragement_labels
+
+
+
 
 #Standard home page. 'index.html' is the file in your templates that has the CSS and HTML for your app
 # @app.route('/', methods=['GET', 'POST'])
@@ -239,6 +293,12 @@ def get_outputs():
     # prof_score = "placeholder"
     # prof_score = get_professionalism_score(user_df)
     top_two_classes, first_class_prob, second_class_prob = get_professionalism_score(user_df)
+    top_class = id_to_source[top_two_classes[0]]
+    second_class = id_to_source[top_two_classes[1]]
+
+    # Run SHAP, get 3 lists of 3 features each
+    category_reasoning, improvement_feedback, encouragement_feedback = get_SHAP_results(user_df, top_two_classes[0], goal_category)
+
 
     return render_template(
       "outputs.html", 
@@ -246,10 +306,13 @@ def get_outputs():
           'user_text': user_text if user_text else "No input.",
           'goal_category': goal_category if goal_category else "No input.",
           # 'prof_score': prof_score,
-          'top_class': top_two_classes[0],
-          'second_class': top_two_classes[1],
+          'top_class': top_class,
+          'second_class': second_class,
           'top_class_prob': first_class_prob,
-          'second_class_prob': second_class_prob
+          'second_class_prob': second_class_prob,
+          'category_reasoning': category_reasoning,
+          'improvement_feedback': improvement_feedback,
+          'encouragement_feedback': encouragement_feedback
       })
 
 

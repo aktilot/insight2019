@@ -38,7 +38,7 @@
   <div class="starter-template">
 
 <br><br>
-<h3>Your professionalism score (scale 0-4):</h3>
+<h3>Your 'Can I say that?' Breakdown</h3>
   <div>
     <p>
       {{values.user_text}} <br>
@@ -46,6 +46,31 @@
     <p>
      Your text most closely matches category {{values.top_class}} ({{values.top_class_prob}}% match) <br>
      The next closest match was category {{values.second_class}} ({{values.second_class_prob}}% match) <br>
+    </p>
+    <p>
+      Here's what the model really picked up on when categorizing your writing:
+      <ol>
+      <li>{{values.category_reasoning[0]}}</li>
+      <li>{{values.category_reasoning[1]}}</li>
+      <li>{{values.category_reasoning[2]}}</li>
+      </ol> 
+    </p>
+    <p>
+      These are the elements that pushed your writing away from your target audience:
+      <ol>
+      <li>{{values.improvement_feedback[0]}}</li>
+      <li>{{values.improvement_feedback[1]}}</li>
+      <li>{{values.improvement_feedback[2]}}</li> 
+      </ol> 
+    </p>
+    <p>
+      Don't worry, it's not all red ink! Here are some elements where you did match the style of your target audience:
+      <ol>
+      <li>{{values.encouragement_feedback[0]}}</li>
+      <li>{{values.encouragement_feedback[1]}}</li>
+      <li>{{values.encouragement_feedback[2]}}</li>
+      Consider these as food for thought, or things to look at before talking with a professional editor. As we incorporate more documents and writing styles into 'Can I say that?', the model will keep improving it's suggestions. 
+      </ol> 
     </p>
   </div>
 
