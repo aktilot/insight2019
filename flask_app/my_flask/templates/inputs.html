@@ -30,29 +30,44 @@
 
 <html>
   <head>
-    <title>{{title}}</title>
-    
+<!--     <title>{{title}}</title>
+ -->    <title>Can I say that?</title>
     {% if 'show' in request.path %}
-        <link href="./../static/css/bootstrap.min.css" rel="stylesheet">
-        <link href="./../static/css/custom.css" rel="stylesheet">
-    {% else %}
         <link href="./static/css/bootstrap.min.css" rel="stylesheet">
         <link href="./static/css/custom.css" rel="stylesheet">
+    {% else %}
+        <link href="../static/css/bootstrap.min.css" rel="stylesheet">
+        <link href="../static/css/custom.css" rel="stylesheet">
     {% endif %}
+
+        <center>
+        <h1> Can I say that?</h1>
+        </center>
+
  </head>
 
  <body>
     <div class="container">
-        <form action="/output" method="POST">
-          <div class="form-group">
-            <label for="user_text">Enter your message below:</label>
-            <textarea class="form-control" type="text" name="user_text" id="user_text" rows="10" cols="30"></textarea>
+      <div class="starter-template">
+        <div class="row">
+          <div class="column" style="width:40%;">
+            <h3>What is Fit to Print?</h3>
+            <p>This project was completed in three weeks as a part of the Insight Data Science program.</p>
+            <p>Fit to print is a tool that helps you match the writing style of your article to the editorial voice of a desired publication.</p>
+            <p>It has learned the stylistic markers of articles from 9 major publications with a variety of approaches to reporting news and compares your article to others that appeared in these publications.</p>
+            <p><br> For more information, <a href="{{ url_for('slides') }}">see the slides.</a></p>
           </div>
-          Choose your audience:  <select name = "goal_category" method="GET" action="/output">
-          {% for sources in goal_category %}
-          <option value= "{{sources}}" SELECTED>{{sources}}</option>"
-          {% endfor %}
-          </select>
+          <div class="column" style="width:60%;padding-left:70px;">
+            <form action="/output" method="POST">
+              <div class="form-group">
+                <label for="user_text">Enter your message below:</label>
+                <textarea class="form-control" type="text" name="user_text" id="user_text" rows="10" cols="30"></textarea>
+              </div>
+              Choose your audience:  <select name = "goal_category" method="GET" action="/output">
+                {% for sources in goal_category %}
+                <option value= "{{sources}}" SELECTED>{{sources}}</option>"
+                {% endfor %}
+              </select>
 
            <div>
             <button type="submit">Analyze!</button>
