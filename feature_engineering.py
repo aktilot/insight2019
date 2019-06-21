@@ -212,12 +212,13 @@ combined_data["Yell_count"].value_counts()
 #%%
 """
 I tested that the model still performs the same as during prototyping, so now
-we'll save the combined_data dataframe via pickle.
+we'll save the combined_data dataframe via pickle. 
 """
 #%% 
 import pickle
 filename = '../pickled_corpus_w_features.sav'
 pickle.dump(combined_data, open(filename, 'wb'))
+
 #%%
 """
 I tested that the model still performs the same as during prototyping, so now

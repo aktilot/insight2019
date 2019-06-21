@@ -23,6 +23,8 @@ app = Flask(__name__, static_url_path='/static')
 model = pickle.load(open("./model/finalized_XGBoost_model.sav", 'rb'))
 scaler = pickle.load(open("./model/finalized_XGBoost_scaler.sav", 'rb'))
 final_column_order = pickle.load(open("./model/finalized_column_order.sav", 'rb'))
+source_averages = pickle.load(open("./model/finalized_source_averages.sav", 'rb'))
+source_averages = source_averages.round(decimals = 2)
 
 id_to_source = {0: 'Extremely Casual', 1: 'Company IM', 2: 'Workplace Casual', 3: 'Reports', 4: 'Dissertations'}
 source_to_id = {'Extremely Casual': 0 ,'Company IM': 1, 'Workplace Casual': 2, 'Reports': 3, 'Dissertations': 4}
@@ -190,7 +192,6 @@ def get_professionalism_score(user_df):
     userY = combined_data['source'] # "source" is the column of numeric sources
 
     # scale the data using scaler trained on original corpus
-
     userX = scaler.transform(userX) 
 
     # make predictions for test data
@@ -198,8 +199,17 @@ def get_professionalism_score(user_df):
     
     top_two_classes = y_probs[0].argsort()[-2:][::-1]
     first_class_prob = y_probs[0][top_two_classes[0]]
+    first_class_prob  = round(first_class_prob * 100)
     second_class_prob = y_probs[0][top_two_classes[1]]
-    class_diff = first_class_prob - second_class_prob 
+    second_class_prob  = round(second_class_prob * 100)
+
+    #attach column names to scaled features for user
+    userX_df = pd.DataFrame(userX)
+    userX_df.columns = final_column_order[3:]
+    userX_df = userX_df.round(decimals = 2)
+    userX_df = userX_df.reset_index(drop=True)
+
+    # class_diff = first_class_prob - second_class_prob 
 
     # if class_diff > 0.2: # if the choice was clear, go with highest prob class
     #     user_prof_score = top_two_classes[0]
@@ -207,7 +217,7 @@ def get_professionalism_score(user_df):
     #     user_prof_score = min(top_two_classes[0], top_two_classes[1]) + 0.5
     
     # return user_prof_score
-    return top_two_classes, first_class_prob, second_class_prob
+    return top_two_classes, first_class_prob, second_class_prob, userX_df
 
 
 def get_SHAP_results(user_df, user_category, goal_category):
@@ -244,21 +254,29 @@ def get_SHAP_results(user_df, user_category, goal_category):
     #Why did user text get it's particular score?
     user_category_reasoning = user_reasoning.sort_values(by=[user_category], ascending=False)
     user_category_reasoning_labels = user_category_reasoning.index.values[0:3]
-    user_category_reasoning_labels = [column_dict[feature] for feature in user_category_reasoning_labels] 
-
+    user_category_reasoning_labels2 = [column_dict[feature] for feature in user_category_reasoning_labels] 
+    user_category_reasoning_labels2 = [item for sublist in user_category_reasoning_labels2 for item in sublist]
+    user_category_reasoning_avgs = source_averages.loc[user_category, user_category_reasoning_labels]
     
     # What features diminished their odds of being labeled as their goal?
     user_goal_improvement = user_reasoning.sort_values(by=[goal_numeric], ascending=True)
     user_goal_improvement_labels = user_goal_improvement.index.values[0:3]
-    user_goal_improvement_labels = [column_dict[feature] for feature in user_goal_improvement_labels] 
+    user_goal_improvement_labels2 = [column_dict[feature] for feature in user_goal_improvement_labels] 
+    user_goal_improvement_labels2 = [item for sublist in user_goal_improvement_labels2 for item in sublist]
+    user_goal_improvement_avgs = source_averages.loc[goal_numeric, user_goal_improvement_labels]
+
 
     
     # What features improved their odds of being labeled as their goal?
     user_goal_encouragement = user_reasoning.sort_values(by=[goal_numeric], ascending=False)
     user_goal_encouragement_labels = user_goal_encouragement.index.values[0:3]
-    user_goal_encouragement_labels = [column_dict[feature] for feature in user_goal_encouragement_labels] 
+    user_goal_encouragement_labels2 = [column_dict[feature] for feature in user_goal_encouragement_labels]
+    user_goal_encouragement_labels2 = [item for sublist in user_goal_encouragement_labels2 for item in sublist]
+    user_goal_encouragement_avgs = source_averages.loc[goal_numeric, user_goal_encouragement_labels]
+
     
-    return user_category_reasoning_labels, user_goal_improvement_labels, user_goal_encouragement_labels
+    return user_category_reasoning_labels, user_category_reasoning_labels2, user_category_reasoning_avgs, user_goal_improvement_labels, user_goal_improvement_labels2, user_goal_improvement_avgs, user_goal_encouragement_labels, user_goal_encouragement_labels2, user_goal_encouragement_avgs
+
 
 
 
@@ -290,14 +308,19 @@ def get_outputs():
     user_df = process_user_text(user_text1, goal_category) # Returns a DataFrame with 1 row
 
     # run the model function
-    # prof_score = "placeholder"
-    # prof_score = get_professionalism_score(user_df)
-    top_two_classes, first_class_prob, second_class_prob = get_professionalism_score(user_df)
+    top_two_classes, first_class_prob, second_class_prob, userX = get_professionalism_score(user_df)
     top_class = id_to_source[top_two_classes[0]]
     second_class = id_to_source[top_two_classes[1]]
 
     # Run SHAP, get 3 lists of 3 features each
-    category_reasoning, improvement_feedback, encouragement_feedback = get_SHAP_results(user_df, top_two_classes[0], goal_category)
+    # For those features, look up their average for either the goal or user category
+    category_reasoning, category_reasoning2, category_avgs, improvement_feedback, improvement_feedback2, improvement_avgs, encouragement_feedback, encouragement_feedback2, encouragement_avgs = get_SHAP_results(user_df, top_two_classes[0], goal_category)
+
+
+    # Get user values for all 9 features I want to report
+    user_cat_val = userX.loc[0, category_reasoning]
+    imp_cat_val = userX.loc[0, improvement_feedback]
+    enc_cat_val = userX.loc[0, encouragement_feedback]
 
 
     return render_template(
@@ -310,9 +333,15 @@ def get_outputs():
           'second_class': second_class,
           'top_class_prob': first_class_prob,
           'second_class_prob': second_class_prob,
-          'category_reasoning': category_reasoning,
-          'improvement_feedback': improvement_feedback,
-          'encouragement_feedback': encouragement_feedback
+          'category_reasoning': category_reasoning2,
+          'user_cat_val': user_cat_val,
+          'category_avgs': category_avgs,
+          'improvement_feedback': improvement_feedback2,
+          'imp_cat_val': imp_cat_val,
+          'improvement_avgs': improvement_avgs,
+          'encouragement_feedback': encouragement_feedback2,
+          'enc_cat_val': enc_cat_val,
+          'encouragement_avgs': encouragement_avgs
       })
 
 

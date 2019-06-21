@@ -41,7 +41,7 @@
     {% endif %}
 
         <center>
-        <h1> Can I say that?</h1>
+        <h1>Can I say that?</h1>
         </center>
 
  </head>
@@ -53,23 +53,20 @@
           <div class="column" style="width:40%;">
             <form action="/output" method="POST">
               <div class="form-group">
-                
                 <textarea class="form-control" type="text" name="user_text" id="user_text" rows="10" cols="30"></textarea>
               </div>
               Choose your audience:  <select name = "goal_category" method="GET" action="/output">
                 {% for sources in goal_category %}
                 <option value= "{{sources}}" SELECTED>{{sources}}</option>"
                 {% endfor %}
-              </select>
-            <div>
-              <button type="submit">Analyze!</button>
-            </div>
+              </select> <button type="submit">Analyze!</button>
+
             </form>
           </div>
           <div class="column" style="width:60%;padding-left:70px;">
             <h3>Do you worry about the tone of your writing?</h3>
-            <p>'Can I say that?' is a simple tool that gives you a sense for how others may perceive your writing.</p>
-            <p>It's digested hundreds of pages from forums, blog posts, government reports, and even PhD dissertations, to learn how we express ourselves in different contexts.</p>
+            <p>'Can I say that?' is a simple tool that gives you a sense for how others may perceive your writing. It was developed over a few weeks as a pilot project for the Insight Data Science program.</p>
+            <p>It's digested thousands of pages from forums, blog posts, government reports, and PhD dissertations, to learn how we express ourselves in different contexts.</p>
             <p>Try it out! Enter that email you've been staring at, and we'll let you know if it's better on Reddit or in your boss' inbox.</p>
           </div>
  </body>

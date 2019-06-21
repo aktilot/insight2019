@@ -27,52 +27,74 @@
  }
 
 </style>
+<html>
+  <head>
+   <title>Can I say that?</title>
+    {% if 'show' in request.path %}
+        <link href="./static/css/bootstrap.min.css" rel="stylesheet">
+        <link href="./static/css/custom.css" rel="stylesheet">
+    {% else %}
+        <link href="../static/css/bootstrap.min.css" rel="stylesheet">
+        <link href="../static/css/custom.css" rel="stylesheet">
+    {% endif %}
 
+        <center>
+        <h1> Can I say that?</h1>
+        </center>
 
-<title>Can I say that?</title>
-</head>
-<body>
-<div class="main">
-  <div style="text-align:center">
-  <br><br>
-  <div class="starter-template">
+ </head>
+  <hr size="200"> 
+ <body>
+    <div class="container">
+      <div class="starter-template">
+        <div class="row">
+          <div class="column" style="width:40%;">
+            <p>
+            {{values.user_text}} <br>
+            </p>
+            <p>
+          </div>
+          <div class="column" style="width:60%;padding-left:70px;">
+            <h3>Your 'Can I say that?' Breakdown</h3>
+                <p>
+                  Your text most closely matches: {{values.top_class}} ({{values.top_class_prob}}% match) <br>
+                  The next closest match was: {{values.second_class}} ({{values.second_class_prob}}% match) <br>
+                </p>
+                <p>
+                  Here's what the model picked up on when categorizing your writing as <b>{{values.top_class}}</b>:</p>
+                  <ol>
+                  <li> <b> {{values.category_reasoning[0]}} </b> Your score: {{values.user_cat_val[0]}}, average: {{values.category_avgs[0]}} </li>
+                  <li> <b> {{values.category_reasoning[1]}} </b> Your score: {{values.user_cat_val[1]}}, average: {{values.category_avgs[1]}} </li>
+                  <li> <b> {{values.category_reasoning[2]}} </b> Your score: {{values.user_cat_val[2]}}, average: {{values.category_avgs[2]}} </li>
+                  </ol> 
+                </p>
+                <p>
+                  These are the elements that pushed your writing away from <b>{{values.goal_category}}</b>:
+                  <ol>
+                  <li><b>{{values.improvement_feedback[0]}} </b> Your score: {{values.imp_cat_val[0]}}, average: {{values.improvement_avgs[0]}} </li>
+                  <li><b>{{values.improvement_feedback[1]}} </b> Your score: {{values.imp_cat_val[1]}}, average: {{values.improvement_avgs[1]}} </li>
+                  <li><b>{{values.improvement_feedback[2]}} </b> Your score: {{values.imp_cat_val[2]}}, average: {{values.improvement_avgs[2]}} </li> 
+                  </ol> 
+                </p>
+                <p>
+                  Don't worry, it's not all red ink! Here are some elements where you more closely matched <b>{{values.goal_category}}</b>:
+                  <ol>
+                  <li><b>{{values.encouragement_feedback[0]}} </b> Your score: {{values.enc_cat_val[0]}}, average: {{values.encouragement_avgs[0]}} </li>
+                  <li><b>{{values.encouragement_feedback[1]}} </b> Your score: {{values.enc_cat_val[1]}}, average: {{values.encouragement_avgs[1]}} </li>
+                  <li><b>{{values.encouragement_feedback[2]}} </b> Your score: {{values.enc_cat_val[2]}}, average: {{values.encouragement_avgs[2]}} </li>
+                  </ol>
+                <p>
+                  Consider these as food for thought, or things to look at before talking with a professional editor. As we incorporate more documents and writing styles into 'Can I say that?', the model will keep improving it's suggestions.
+                </p>
+                <p>Ready to edit?
+                <button onclick="goBack()">Try Again</button>
+                  </p>
+                  <script>
+                  function goBack() {
+                    window.history.back();
+                  }
+                  </script>
+          </div>
+ </body>
 
-<br><br>
-<h3>Your 'Can I say that?' Breakdown</h3>
-  <div>
-    <p>
-      {{values.user_text}} <br>
-    </p>
-    <p>
-     Your text most closely matches category {{values.top_class}} ({{values.top_class_prob}}% match) <br>
-     The next closest match was category {{values.second_class}} ({{values.second_class_prob}}% match) <br>
-    </p>
-    <p>
-      Here's what the model really picked up on when categorizing your writing:
-      <ol>
-      <li>{{values.category_reasoning[0]}}</li>
-      <li>{{values.category_reasoning[1]}}</li>
-      <li>{{values.category_reasoning[2]}}</li>
-      </ol> 
-    </p>
-    <p>
-      These are the elements that pushed your writing away from your target audience:
-      <ol>
-      <li>{{values.improvement_feedback[0]}}</li>
-      <li>{{values.improvement_feedback[1]}}</li>
-      <li>{{values.improvement_feedback[2]}}</li> 
-      </ol> 
-    </p>
-    <p>
-      Don't worry, it's not all red ink! Here are some elements where you did match the style of your target audience:
-      <ol>
-      <li>{{values.encouragement_feedback[0]}}</li>
-      <li>{{values.encouragement_feedback[1]}}</li>
-      <li>{{values.encouragement_feedback[2]}}</li>
-      Consider these as food for thought, or things to look at before talking with a professional editor. As we incorporate more documents and writing styles into 'Can I say that?', the model will keep improving it's suggestions. 
-      </ol> 
-    </p>
-  </div>
-
-</div></div></div>
-</body>
+</html>

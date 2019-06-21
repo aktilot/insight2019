@@ -20,12 +20,12 @@ from sklearn.metrics import confusion_matrix
 from sklearn.utils.multiclass import unique_labels
 #%%
 """
-Load pickled dataframe
+Load pickled dataframe.
 """
 #%% 
 combined_data = pickle.load(open("./data/pickled_corpus_w_features.sav", 'rb'))
 combined_data = combined_data.drop(["text_standard"], axis=1)
-
+combined_data = combined_data.reset_index(drop=True)
 final_col_order = combined_data.columns.tolist()
 #%%
 """
@@ -43,20 +43,37 @@ X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=test_size, r
 
 # This time we will scale the data correctly
 scaler = preprocessing.StandardScaler().fit(X_train)
-X_train = scaler.transform(X_train)
-X_test = scaler.transform(X_test) 
+X_train = scaler.transform(X_train) #index now starts at 0
+X_test = scaler.transform(X_test) #index now starts at 0
 
 # fit model to training data
+y_train2 = y_train.reset_index(drop=True)
+y_test2 = y_test.reset_index(drop=True)
+
 model = XGBClassifier()
-model.fit(X_train, y_train)
+model.fit(X_train, y_train2) # should I reset the index on y_train?
+
 # make predictions for test data
 y_pred = model.predict(X_test)
 predictions = [round(value) for value in y_pred]
+
 # evaluate predictions
-accuracy = accuracy_score(y_test, predictions)
+accuracy = accuracy_score(y_test2, predictions)
 print("Accuracy: %.2f%%" % (accuracy * 100.0))
 
+#%%
+"""
+Calculate average scaled values for each feature and category. Will use for 
+comparison in the web app when making suggestions.
+"""
+#%% 
 
+labeled_scaled_df = pd.DataFrame(X_train)
+labeled_scaled_df["source"] = y_train2
+source_averages = labeled_scaled_df.groupby('source').mean()
+
+source_averages.columns = final_col_order[3:]
+source_averages = source_averages.reset_index(drop=True)
 
 #%%
 """
@@ -71,6 +88,9 @@ pickle.dump(scaler, open(filename, 'wb'))
 
 filename = './insight2019/flask_app/my_flask/model/finalized_column_order.sav'
 pickle.dump(final_col_order, open(filename, 'wb'))
+
+filename = './insight2019/flask_app/my_flask/model/finalized_source_averages.sav'
+pickle.dump(source_averages, open(filename, 'wb'))
 
 
 #%%
