@@ -3,6 +3,13 @@
 #%%
 import pandas as pd
 import numpy as np
+
+import matplotlib.pyplot as plt
+import matplotlib.patheffects as PathEffects
+import seaborn as sns
+
+from sklearn.metrics import confusion_matrix
+from sklearn.utils.multiclass import unique_labels
 #%%
 """
 Custom functions for feature engineering
@@ -54,6 +61,19 @@ def scream_counter(text):
     huhhh = len(re.findall(r'\?\?', text))
     screams = crazy_confused + ahhhh + huhhh            
     return screams
+
+
+Google_Curses = pd.read_csv("./data/RobertJGabriel_Google_swear_words.txt", header = None)
+bad_words = Google_Curses[0].tolist()
+
+def swear_counter(text): #returns number of curses in text
+    swear_jar = []
+    for word in bad_words:
+        curses = text.count(word)
+        swear_jar.append(curses)
+    return sum(swear_jar)
+    
+    
 #%%
 """
 Final cleaning of the final corpus (190617):
@@ -64,7 +84,7 @@ Final cleaning of the final corpus (190617):
 """
 #%% 
 # remove AskHistorians and reset index (this is important)
-all_data = pd.read_csv("../data/190617_corpus.csv", index_col = 0)
+all_data = pd.read_csv("./data/190617_corpus.csv", index_col = 0)
 clean_data = all_data.loc[all_data["subreddit"] != "AskHistorians",:]
 clean_data = clean_data.reset_index(drop=True) 
 
@@ -84,9 +104,9 @@ clean_data["source"].value_counts()
 # maybe also remove rows that end up with nothing left in the text?
 doc_lengths = [len(text.strip().split()) for text in clean_data['text']]
 clean_data["doc_length"] = doc_lengths
-clean_data = clean_data[clean_data["doc_length"] != 0]
-clean_data = clean_data.drop(["doc_length"], axis=1)
-clean_data = clean_data.reset_index(drop=True)
+clean_data = clean_data[clean_data["doc_length"] != 0] # removes about 40 rows
+clean_data = clean_data.drop(["doc_length"], axis=1) 
+clean_data = clean_data.reset_index(drop=True) # so we must reset the index
 #%%
 """
 First create features from NLP packages:
@@ -179,16 +199,12 @@ combined_data["SIA_com"] = sia_comp
 Now for the custom features
 """
 #%%   
-Google_Curses = pd.read_csv("../data/RobertJGabriel_Google_swear_words.txt", header = None)
-bad_words = Google_Curses[0].tolist()
 
-any_bad = []
+swear_jar = []
 for row in combined_data["text"]:
-    if any(str(word) in str(row) for word in bad_words):
-        any_bad.append(1)
-    else: any_bad.append(0)
-
-combined_data["Google_curses"] = any_bad
+    curses = swear_counter(row)    
+    swear_jar.append(curses)
+combined_data["Google_curses"] = swear_jar
 combined_data["Google_curses"].value_counts()
 
 
@@ -209,32 +225,47 @@ for row in combined_data["text"]:
 combined_data["Yell_count"] = internet_yelling
 combined_data["Yell_count"].value_counts()
 
+punct_columns = ['#', '$', "''", '(', ')', ',', '.', ':','``']
+combined_data['Total_Punctuation'] = combined_data.loc[:, punct_columns].sum(axis=1) 
+
 #%%
 """
-I tested that the model still performs the same as during prototyping, so now
-we'll save the combined_data dataframe via pickle. 
+Visualize features to determine the best scaling method.
+
+Every feature has a bunch of outliers, so let's try masking them
+with NaN and then remaking the plots. That generally looks better,
+although the punctuation POS are still maybe unhelpful.
 """
 #%% 
-import pickle
-filename = '../pickled_corpus_w_features.sav'
-pickle.dump(combined_data, open(filename, 'wb'))
+masked_data = combined_data.iloc[:,3:].values
+mask = np.abs((masked_data - masked_data.mean(0)) / masked_data.std(0)) > 2
+masked_data = pd.DataFrame(np.where(mask, np.nan, masked_data), combined_data.iloc[:,3:].index, combined_data.iloc[:,3:].columns)
 
+col_names = combined_data.columns[3:]
+fig, ax = plt.subplots(len(col_names), figsize=(5,160))
+
+for i, col_val in enumerate(col_names):
+
+    sns.boxplot(y=masked_data[col_val], ax=ax[i])
+    ax[i].set_title('Box plot - {}'.format(col_val), fontsize=10)
+    ax[i].set_xlabel(col_val, fontsize=8)
+
+plt.show()
 #%%
 """
 I tested that the model still performs the same as during prototyping, so now
 we'll save the combined_data dataframe via pickle.
 """
 #%% 
-
-
-
+import xgboost
 from xgboost import XGBClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn import preprocessing
 
 # split data into X and y
-X = combined_data.iloc[:,3:65]
+# X = combined_data.iloc[:,3:65]
+X = masked_data
 Y = combined_data['source'] # "source" is the column of numeric sources
 
 # split data into train and test sets
@@ -247,6 +278,10 @@ scaler = preprocessing.StandardScaler().fit(X_train)
 X_train = scaler.transform(X_train)
 X_test = scaler.transform(X_test) 
 
+X_train = pd.DataFrame(X_train, columns = col_names)
+X_test = pd.DataFrame(X_test, columns = col_names)
+
+
 # fit model no training data
 model = XGBClassifier()
 model.fit(X_train, y_train)
@@ -255,20 +290,17 @@ y_pred = model.predict(X_test)
 predictions = [round(value) for value in y_pred]
 # evaluate predictions
 accuracy = accuracy_score(y_test, predictions)
-print("Accuracy: %.2f%%" % (accuracy * 100.0))
+print("Accuracy: %.2f%%" % (accuracy * 100.0)) # drops to 78.16% with masked data
 
+xgboost.plot_importance(model)
+plt.show()
 #%%
 """
 Confusion matrix
 """
 #%% 
 
-import matplotlib.pyplot as plt
-import matplotlib.patheffects as PathEffects
-import seaborn as sns
 
-from sklearn.metrics import confusion_matrix
-from sklearn.utils.multiclass import unique_labels
 
 def plot_confusion_matrix(y_true, y_pred, classes,
                           normalize=False,
@@ -334,30 +366,30 @@ plot_confusion_matrix(y_test, y_pred, classes = y_test, normalize=True,
 Sanity check: test specific items to see why they were labeled
 """
 #%%
-import lime
-import lime.lime_tabular
-
-# create lambda function to return probability of the target variable given a set of features
-predict_fn_xgb = lambda x: model.predict_proba(x).astype(float)
-#create list of feature names to be used later
-feature_names = combined_data.columns[3:].tolist()
-#create LIME explainer
-explainer = lime.lime_tabular.LimeTabularExplainer(X_train, 
-                                                   feature_names = feature_names, 
-                                                   class_names = ['1', '2','3','4','5'],
-                                                   kernel_width = 3)
-
-lime_labled_tuples = list(zip(y_test, predictions))
-lime_labeled_df = pd.DataFrame(lime_labled_tuples, columns = ["true_score", "predicted_score"])
-
-observation_to_check = 392 #used Variable explorer to figure this out
-exp = explainer.explain_instance(X_test[observation_to_check], 
-                                 predict_fn_xgb, 
-                                 num_features = len(feature_names))
-
-import pickle
-filename = '../pickled_LIME_5_as_5.sav'
-pickle.dump(exp, open(filename, 'wb'))
+#import lime
+#import lime.lime_tabular
+#
+## create lambda function to return probability of the target variable given a set of features
+#predict_fn_xgb = lambda x: model.predict_proba(x).astype(float)
+##create list of feature names to be used later
+#feature_names = combined_data.columns[3:].tolist()
+##create LIME explainer
+#explainer = lime.lime_tabular.LimeTabularExplainer(X_train, 
+#                                                   feature_names = feature_names, 
+#                                                   class_names = ['1', '2','3','4','5'],
+#                                                   kernel_width = 3)
+#
+#lime_labled_tuples = list(zip(y_test, predictions))
+#lime_labeled_df = pd.DataFrame(lime_labled_tuples, columns = ["true_score", "predicted_score"])
+#
+#observation_to_check = 392 #used Variable explorer to figure this out
+#exp = explainer.explain_instance(X_test[observation_to_check], 
+#                                 predict_fn_xgb, 
+#                                 num_features = len(feature_names))
+#
+#import pickle
+#filename = '../pickled_LIME_5_as_5.sav'
+#pickle.dump(exp, open(filename, 'wb'))
 #%%
 """
 Further sanity check: using Tree SHAP instead of LIME
@@ -372,4 +404,16 @@ shap_values = explainer.shap_values(X_train_labeled)
 shap.summary_plot(shap_values, X_train_labeled)
 
 #shap.summary_plot(shap_values[0], X_train_labeled)
-shap.force_plot(explainer.expected_value, shap_values[0], X_train_labeled.iloc[0,:])
+#shap.force_plot(explainer.expected_value[0], shap_values[0], X_train_labeled.iloc[0,:])
+
+#%%
+"""
+I tested that the model still performs the same as during prototyping, so now
+we'll save the combined_data dataframe via pickle. 
+"""
+#%% 
+import pickle
+filename = '../pickled_corpus_w_features.sav'
+pickle.dump(combined_data, open(filename, 'wb'))
+
+#%%

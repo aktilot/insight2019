@@ -27,6 +27,109 @@
  }
 
 </style> -->
+
+<html>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<head>
+ <title>Can I say that?</title>
+    {% if 'show' in request.path %}
+        <!-- <link href="./static/css/bootstrap.min.css" rel="stylesheet"> -->
+        <!-- <link href="./static/css/custom.css" rel="stylesheet"> -->
+        <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    {% else %}
+        <!-- <link href="../static/css/bootstrap.min.css" rel="stylesheet"> -->
+        <!-- <link href="../static/css/custom.css" rel="stylesheet"> -->
+        <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    {% endif %}
+<!-- 
+        <center>
+        <h1>Can I say that?</h1>
+        </center> -->
+
+</head>
+<!-- First Grid: Logo & About -->
+<div class="w3-row">
+  <div class="w3-half w3-dark-grey w3-container w3-center" style="height:800px">
+    <div class="w3-padding-64">
+      <h1>Can I say that?</h1>
+    </div>
+    <div class="w3-container w3-responsive">
+          <div class="w3-container w3-card w3-padding-32 w3-white">
+              <div class="w3-padding-32"><i>{{values.user_text}}</i></div>
+              <p>Ready to edit? <button class="w3-button w3-dark-grey w3-right" onclick="goBack()">Try Again</button> </p>
+                  <script>
+                  function goBack() {
+                    window.history.back();
+                  }
+                  </script>
+          </div>
+          <p>
+            Consider your results as food for thought, or things to look at before talking with a professional editor. As we incorporate more documents and writing styles into 'Can I say that?', the model will keep improving it's suggestions.
+          </p> 
+    </div>
+  </div>
+  <div class="w3-half w3-blue-grey w3-container" style="height:800px">
+    <div class="w3-padding-64 w3-center">
+      <h1>It depends.</h1>
+    </div>
+      <!-- <img src="/w3images/avatar3.png" class="w3-margin w3-circle" alt="Person" style="width:50%"> -->
+    <div class="w3-padding-32 w3-left">
+          <p>
+                  Your text most closely matches: {{values.top_class}} ({{values.top_class_prob}}% match) <br>
+                  The next closest match was: {{values.second_class}} ({{values.second_class_prob}}% match) <br>
+                </p>
+                <p>
+                  Here's what the model picked up on when categorizing your writing as <b>{{values.top_class}}</b>:</p>
+                  <ol>
+                  <li> <b> {{values.category_reasoning[0]}} </b> Your score: {{values.user_cat_val[0]}}, average: {{values.category_avgs[0]}} </li>
+                  <li> <b> {{values.category_reasoning[1]}} </b> Your score: {{values.user_cat_val[1]}}, average: {{values.category_avgs[1]}} </li>
+                  <li> <b> {{values.category_reasoning[2]}} </b> Your score: {{values.user_cat_val[2]}}, average: {{values.category_avgs[2]}} </li>
+                  </ol> 
+                </p>
+                <p>
+                  These are the elements that pushed your writing away from <b>{{values.goal_category}}</b>:
+                  <ol>
+                  <li><b>{{values.improvement_feedback[0]}} </b> Your score: {{values.imp_cat_val[0]}}, average: {{values.improvement_avgs[0]}} </li>
+                  <li><b>{{values.improvement_feedback[1]}} </b> Your score: {{values.imp_cat_val[1]}}, average: {{values.improvement_avgs[1]}} </li>
+                  <li><b>{{values.improvement_feedback[2]}} </b> Your score: {{values.imp_cat_val[2]}}, average: {{values.improvement_avgs[2]}} </li> 
+                  </ol> 
+                </p>
+                <p>
+                  Don't worry, it's not all red ink! Here are some elements where you more closely matched <b>{{values.goal_category}}</b>:
+                  <ol>
+                  <li><b>{{values.encouragement_feedback[0]}} </b> Your score: {{values.enc_cat_val[0]}}, average: {{values.encouragement_avgs[0]}} </li>
+                  <li><b>{{values.encouragement_feedback[1]}} </b> Your score: {{values.enc_cat_val[1]}}, average: {{values.encouragement_avgs[1]}} </li>
+                  <li><b>{{values.encouragement_feedback[2]}} </b> Your score: {{values.enc_cat_val[2]}}, average: {{values.encouragement_avgs[2]}} </li>
+                  </ol>
+                    
+      </div> 
+  </div>
+</div>
+
+<!-- Footer -->
+<footer class="w3-container w3-black w3-padding-16">
+  <p>'Can I say that?' was developed by Amanda Tilot as an Insight Data Science Fellow.<br />
+  Twitter: <a href="https://www.twitter.com/aktilot" target="_blank">@aktilot</a>    |     Web: <a href="https://aktilot.github.io" target="_blank">aktilot.github.io</a>     |     Email: amanda.k.tilot@gmail.com<br />
+  Powered by <a href="https://www.w3schools.com/w3css/default.asp" target="_blank">w3.css</a>
+</p>
+</footer>
+
+</body>
+</html>
+
+
+
+<!-- 
+
+
+
+
+
+
+
+
 <html>
   <head>
    <title>Can I say that?</title>
