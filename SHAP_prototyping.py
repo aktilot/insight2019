@@ -265,7 +265,6 @@ def make_classification_plot(y_probs, top_class_numeric):
     plt.title("Percent match to each category", loc='left')
     plt.xlabel(None)
     plt.ylabel(None)
-#    plt.set_size_inches(10,5)
  
     plt.savefig('./insight2019/flask_app/my_flask/model/test_plot.png', bbox_inches='tight')
     

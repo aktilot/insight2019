@@ -13,7 +13,11 @@ import regex
 import re
 from nltk.sentiment.vader import SentimentIntensityAnalyzer as SIA
 import shap
-
+from io import BytesIO
+import base64
+import urllib.parse
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 #Initialize app
 app = Flask(__name__, static_url_path='/static')
@@ -219,9 +223,6 @@ def get_professionalism_score(user_df):
     # return user_prof_score
     return top_two_classes, first_class_prob, second_class_prob, userX_df, y_probs
 
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 def make_classification_plot(y_probs, top_class_numeric): 
     y_probs2 = [i for i in y_probs[0]]
@@ -235,10 +236,10 @@ def make_classification_plot(y_probs, top_class_numeric):
     my_size=np.where(df ['source2']==id_to_source[top_class_numeric], 70, 30)
     
     # set up the thing that will hold my figure 
-    img = StringIO.StringIO()
+    img = BytesIO()
 
     # image size 
-    plt.figure(figsize=[6,2])
+    plt.figure(figsize=[6,2], dpi = 300)
     plt.tight_layout()
 
     # The vertival plot is made using the hline function
@@ -252,10 +253,11 @@ def make_classification_plot(y_probs, top_class_numeric):
     plt.ylabel(None)
 
     # add the plot data to the img thing
-    plt.savefig(img, format='png')
+    plt.savefig(img, format='png', bbox_inches = 'tight')
     plt.close()
     img.seek(0)
-    plot_url = base64.b64encode(img.getvalue())
+    img_png_target = img.getvalue()
+    plot_url = base64.b64encode(img_png_target)
 
     return plot_url
     # plt.savefig('./insight2019/flask_app/my_flask/model/test_plot.png', bbox_inches='tight')
@@ -370,10 +372,11 @@ def get_outputs():
 
     return render_template(
       "outputs.html", 
+      class_plot_url = urllib.parse.quote(class_plot),
       values = { 
           'user_text': user_text if user_text else "No input.",
           'goal_category': goal_category if goal_category else "No input.",
-          'class_plot': class_plot,
+          # 'class_plot': class_plot,
           'top_class': top_class,
           'second_class': second_class,
           'top_class_prob': first_class_prob,
