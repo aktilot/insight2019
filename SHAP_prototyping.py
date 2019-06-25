@@ -315,7 +315,7 @@ import shap
 
 def get_SHAP_results(user_df, user_category, goal_category):
     
-    with open("./model/column_keys.txt") as fin:
+    with open("./insight2019/flask_app/my_flask/model/column_keys.txt") as fin:
          rows = ( line.strip().split('\t') for line in fin )
          column_dict = { row[0]:row[1:] for row in rows }
     
@@ -359,7 +359,6 @@ def get_SHAP_results(user_df, user_category, goal_category):
     user_goal_improvement_avgs = source_averages.loc[goal_numeric, user_goal_improvement_labels]
 
 
-    
     # What features improved their odds of being labeled as their goal?
     user_goal_encouragement = user_reasoning.sort_values(by=[goal_numeric], ascending=False)
     user_goal_encouragement_labels = user_goal_encouragement.index.values[0:3]
@@ -371,8 +370,60 @@ def get_SHAP_results(user_df, user_category, goal_category):
     return user_category_reasoning_labels, user_category_reasoning_labels2, user_category_reasoning_avgs, user_goal_improvement_labels, user_goal_improvement_labels2, user_goal_improvement_avgs, user_goal_encouragement_labels, user_goal_encouragement_labels2, user_goal_encouragement_avgs
 
 
-    
-    
-    
-    
-    
+#%%
+"""
+Making lollipop
+"""
+#%%
+category_reasoning, category_reasoning2, category_avgs, improvement_feedback, improvement_feedback2, improvement_avgs, encouragement_feedback, encouragement_feedback2, encouragement_avgs = get_SHAP_results(user_df, top_two_classes[0], goal_category)
+
+user_cat_val = userX.loc[0, category_reasoning]
+imp_cat_val = userX.loc[0, improvement_feedback]
+enc_cat_val = userX.loc[0, encouragement_feedback]
+
+lollipop_red = pd.DataFrame([improvement_feedback2, imp_cat_val, improvement_avgs,])
+lollipop_red = lollipop_red.transpose()
+lollipop_red.columns = ["feature_name", "user_score", "category_average"]
+lollipop_red["purpose"] = "critique"
+
+lollipop_green  = pd.DataFrame([encouragement_feedback2, enc_cat_val, encouragement_avgs,])
+lollipop_green = lollipop_green.transpose()
+lollipop_green.columns = ["feature_name", "user_score", "category_average"]
+lollipop_green["purpose"] = "encouragement"
+
+lollipops = pd.concat([lollipop_green, lollipop_red], axis = 0)
+lollipops["user_diff"] = lollipops["user_score"] - lollipops["category_average"]
+
+# add a threshold so that plots stay interpretable
+lollipops["user_diff"] = lollipops["user_diff"].clip(-2,2)
+
+# Create a color if the source is the highest probability class
+my_range=range(1,len(lollipops.index)+1)
+my_color=np.where(lollipops ['purpose']=="critique", 'purple', 'green')
+#my_size=np.where(lollipops ['source2']==id_to_source[top_class_numeric], 70, 30)
+ 
+# The vertival plot is made using the hline function
+fig, ax = plt.subplots(figsize=(6, 2.4))
+#plt.figure(figsize=[3,6])# longer than wide
+plt.tight_layout()
+
+plt.hlines(y=my_range, xmin=0, xmax=lollipops['user_diff'], color=my_color, alpha=0.4)
+plt.vlines(x=0, ymin = min(my_range), ymax=max(my_range))
+plt.scatter(lollipops['user_diff'], 
+            my_range, 
+            color=my_color, 
+            alpha=1)
+ 
+# Add title and exis names
+plt.yticks(my_range, lollipops['feature_name'])
+plt.title("Difference from goal category average", loc='left')
+plt.xlabel(None)
+plt.ylabel(None)
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.spines['left'].set_visible(False)
+ax.spines['bottom'].set_visible(False)
+ax.get_xaxis().set_visible(False)
+ax.legend()
+
+ 

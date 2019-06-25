@@ -239,7 +239,7 @@ def make_classification_plot(y_probs, top_class_numeric):
     img = BytesIO()
 
     # image size 
-    plt.figure(figsize=[6,2], dpi = 300)
+    fig, ax = plt.subplots(figsize=[6,2], dpi = 300)
     plt.tight_layout()
 
     # The vertival plot is made using the hline function
@@ -251,6 +251,10 @@ def make_classification_plot(y_probs, top_class_numeric):
     plt.title("Percent match to each category", loc='left')
     plt.xlabel(None)
     plt.ylabel(None)
+
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_visible(False)
 
     # add the plot data to the img thing
     plt.savefig(img, format='png', bbox_inches = 'tight')
@@ -320,6 +324,61 @@ def get_SHAP_results(user_df, user_category, goal_category):
     return user_category_reasoning_labels, user_category_reasoning_labels2, user_category_reasoning_avgs, user_goal_improvement_labels, user_goal_improvement_labels2, user_goal_improvement_avgs, user_goal_encouragement_labels, user_goal_encouragement_labels2, user_goal_encouragement_avgs
 
 
+def make_feedback_lollipop(improvement_feedback2, imp_cat_val, improvement_avgs, encouragement_feedback2, enc_cat_val, encouragement_avgs):
+    lollipop_red = pd.DataFrame([improvement_feedback2, imp_cat_val, improvement_avgs])
+    lollipop_red = lollipop_red.transpose()
+    lollipop_red.columns = ["feature_name", "user_score", "category_average"]
+    lollipop_red["purpose"] = "critique"
+    
+    lollipop_green  = pd.DataFrame([encouragement_feedback2, enc_cat_val, encouragement_avgs])
+    lollipop_green = lollipop_green.transpose()
+    lollipop_green.columns = ["feature_name", "user_score", "category_average"]
+    lollipop_green["purpose"] = "encouragement"
+    
+    lollipops = pd.concat([lollipop_green, lollipop_red], axis = 0)
+    lollipops["user_diff"] = lollipops["user_score"] - lollipops["category_average"]
+    
+    # add a threshold so that plots stay interpretable
+    lollipops["user_diff"] = lollipops["user_diff"].clip(-2,2)
+    
+    # Create a color if the source is the highest probability class
+    my_range=range(1,len(lollipops.index)+1)
+    my_color=np.where(lollipops ['purpose']=="critique", 'purple', 'green')
+    #my_size=np.where(lollipops ['source2']==id_to_source[top_class_numeric], 70, 30)
+    
+    # set up the thing that will hold my figure 
+    img = BytesIO()
+
+    # The vertival plot is made using the hline function
+    fig, ax = plt.subplots(figsize=(6, 2.4), dpi = 300)
+    plt.tight_layout()
+    
+    plt.hlines(y=my_range, xmin=0, xmax=lollipops['user_diff'], color=my_color, alpha=0.4)
+    plt.vlines(x=0, ymin = min(my_range), ymax=max(my_range))
+    plt.scatter(lollipops['user_diff'], 
+                my_range, 
+                color=my_color, 
+                alpha=1)
+     
+    # Add title and exis names
+    plt.yticks(my_range, lollipops['feature_name'])
+    plt.title("Difference from goal category average", loc='left')
+    plt.xlabel(None)
+    plt.ylabel(None)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.get_xaxis().set_visible(False)
+
+    # add the plot data to the img thing
+    plt.savefig(img, format='png', bbox_inches = 'tight')
+    plt.close()
+    img.seek(0)
+    img_png_target = img.getvalue()
+    plot_url = base64.b64encode(img_png_target)
+
+    return plot_url
 
 
 
@@ -358,21 +417,23 @@ def get_outputs():
     class_plot = make_classification_plot(y_probs, top_two_classes[0])
 
 
-
     # Run SHAP, get 3 lists of 3 features each
     # For those features, look up their average for either the goal or user category
     category_reasoning, category_reasoning2, category_avgs, improvement_feedback, improvement_feedback2, improvement_avgs, encouragement_feedback, encouragement_feedback2, encouragement_avgs = get_SHAP_results(user_df, top_two_classes[0], goal_category)
-
 
     # Get user values for all 9 features I want to report
     user_cat_val = userX.loc[0, category_reasoning]
     imp_cat_val = userX.loc[0, improvement_feedback]
     enc_cat_val = userX.loc[0, encouragement_feedback]
 
+    # make a results plot that summarizes the good and bad
+    feedback_plot = make_feedback_lollipop(improvement_feedback2, imp_cat_val, improvement_avgs, encouragement_feedback2, enc_cat_val, encouragement_avgs)
+
 
     return render_template(
       "outputs.html", 
       class_plot_url = urllib.parse.quote(class_plot),
+      feedback_plot_url = urllib.parse.quote(feedback_plot),
       values = { 
           'user_text': user_text if user_text else "No input.",
           'goal_category': goal_category if goal_category else "No input.",
