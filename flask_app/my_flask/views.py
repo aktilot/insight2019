@@ -217,8 +217,48 @@ def get_professionalism_score(user_df):
     #     user_prof_score = min(top_two_classes[0], top_two_classes[1]) + 0.5
     
     # return user_prof_score
-    return top_two_classes, first_class_prob, second_class_prob, userX_df
+    return top_two_classes, first_class_prob, second_class_prob, userX_df, y_probs
 
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+def make_classification_plot(y_probs, top_class_numeric): 
+    y_probs2 = [i for i in y_probs[0]]
+    df = pd.DataFrame(y_probs2, columns = ["probs"])
+    df["source"] = source_to_id
+    df["source2"] = pd.Categorical(df["source"])
+    my_range=range(1,len(df.index)+1)
+ 
+    # Create a color if the source is the highest probability class
+    my_color=np.where(df ['source2']==id_to_source[top_class_numeric], 'orange', 'skyblue')
+    my_size=np.where(df ['source2']==id_to_source[top_class_numeric], 70, 30)
+    
+    # set up the thing that will hold my figure 
+    img = StringIO.StringIO()
+
+    # image size 
+    plt.figure(figsize=[6,2])
+    plt.tight_layout()
+
+    # The vertival plot is made using the hline function
+    plt.hlines(y=my_range, xmin=0, xmax=df['probs']*100, color=my_color, alpha=0.4)
+    plt.scatter(df['probs']*100, my_range, color=my_color, s=my_size, alpha=1)
+     
+    # Add title and exis names
+    plt.yticks(my_range, df['source'])
+    plt.title("Percent match to each category", loc='left')
+    plt.xlabel(None)
+    plt.ylabel(None)
+
+    # add the plot data to the img thing
+    plt.savefig(img, format='png')
+    plt.close()
+    img.seek(0)
+    plot_url = base64.b64encode(img.getvalue())
+
+    return plot_url
+    # plt.savefig('./insight2019/flask_app/my_flask/model/test_plot.png', bbox_inches='tight')
 
 def get_SHAP_results(user_df, user_category, goal_category):
     
@@ -308,9 +348,14 @@ def get_outputs():
     user_df = process_user_text(user_text1, goal_category) # Returns a DataFrame with 1 row
 
     # run the model function
-    top_two_classes, first_class_prob, second_class_prob, userX = get_professionalism_score(user_df)
+    top_two_classes, first_class_prob, second_class_prob, userX, y_probs = get_professionalism_score(user_df)
     top_class = id_to_source[top_two_classes[0]]
     second_class = id_to_source[top_two_classes[1]]
+
+    # make a plot to show probability of classification in each category
+    class_plot = make_classification_plot(y_probs, top_two_classes[0])
+
+
 
     # Run SHAP, get 3 lists of 3 features each
     # For those features, look up their average for either the goal or user category
@@ -328,7 +373,7 @@ def get_outputs():
       values = { 
           'user_text': user_text if user_text else "No input.",
           'goal_category': goal_category if goal_category else "No input.",
-          # 'prof_score': prof_score,
+          'class_plot': class_plot,
           'top_class': top_class,
           'second_class': second_class,
           'top_class_prob': first_class_prob,
