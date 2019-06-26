@@ -1,5 +1,7 @@
 #!/usr/bin/env python
-from flask import Flask, render_template, request
+from flask import Flask
+
+from flask import render_template, request
 import requests
 import pandas as pd
 import numpy as np
@@ -18,10 +20,11 @@ import base64
 import urllib.parse
 import matplotlib.pyplot as plt
 import seaborn as sns
+import xgboost
 
 #Initialize app
+# application = Flask(__name__, static_url_path='/static')
 app = Flask(__name__, static_url_path='/static')
-
 
 ### Load the pickled objects for my model and other needed parts.
 model = pickle.load(open("./model/finalized_XGBoost_model.sav", 'rb'))
@@ -248,8 +251,8 @@ def make_classification_plot(y_probs, top_class_numeric):
      
     # Add title and exis names
     plt.yticks(my_range, df['source'])
-    plt.title("Percent match to each category", loc='left')
-    plt.xlabel(None)
+    # plt.title(, loc='left')
+    plt.xlabel("Percent match to each category")
     plt.ylabel(None)
 
     ax.spines['top'].set_visible(False)
@@ -353,8 +356,8 @@ def make_feedback_lollipop(improvement_feedback2, imp_cat_val, improvement_avgs,
     fig, ax = plt.subplots(figsize=(6, 2.4), dpi = 300)
     plt.tight_layout()
     
+    plt.vlines(x=0, ymin = min(my_range), ymax=max(my_range), linestyles="dashed", color = "silver", zorder=0)
     plt.hlines(y=my_range, xmin=0, xmax=lollipops['user_diff'], color=my_color, alpha=0.4)
-    plt.vlines(x=0, ymin = min(my_range), ymax=max(my_range))
     plt.scatter(lollipops['user_diff'], 
                 my_range, 
                 color=my_color, 
@@ -362,14 +365,17 @@ def make_feedback_lollipop(improvement_feedback2, imp_cat_val, improvement_avgs,
      
     # Add title and exis names
     plt.yticks(my_range, lollipops['feature_name'])
-    plt.title("Difference from goal category average", loc='left')
-    plt.xlabel(None)
+    # plt.title(, loc='left')
+    plt.xlabel("Difference from goal category average")
     plt.ylabel(None)
+    plt.xlim(-2,2)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.spines['left'].set_visible(False)
-    ax.spines['bottom'].set_visible(False)
-    ax.get_xaxis().set_visible(False)
+    # ax.spines['bottom'].set_visible(False)
+    # ax.set_xticks([-2,0,2])
+    plt.xticks([-2,0,2], ('Less', 'Similar', 'More'))
+    # ax.get_xaxis().set_visible(False)
 
     # add the plot data to the img thing
     plt.savefig(img, format='png', bbox_inches = 'tight')
@@ -483,5 +489,6 @@ def get_outputs():
 
 
 if __name__ == '__main__':
-    #this runs your app locally
-    app.run(host='0.0.0.0', port=8080, debug=True)
+    # this runs your app locally:
+    # application.run(host='0.0.0.0', port=8080, debug=True)
+    app.run(host='0.0.0.0',debug=True)

@@ -46,7 +46,7 @@
 </head>
 <!-- First Grid: Logo & About -->
 <div class="w3-row">
-  <div class="w3-half w3-dark-grey w3-container w3-center" style="height:800px">
+  <div class="w3-half w3-indigo w3-container w3-center" style="height:800px">
     <div class="w3-padding-64">
       <h1>Can I say that?</h1>
     </div>
@@ -55,15 +55,16 @@
               <div class="form-group">
                 <textarea class="form-control" type="text" name="user_text" id="user_text" rows="10" cols="60"></textarea>
               </div>
+              <p></p>
               Choose your audience:  <select name = "goal_category" method="GET" action="/output">
                 {% for sources in goal_category %}
                 <option value= "{{sources}}" SELECTED>{{sources}}</option>"
                 {% endfor %}
-              </select> <button type="submit" class="w3-button w3-dark-grey w3-right">Analyze!</button>
+              </select> <button type="submit" class="w3-button w3-indigo w3-right">Analyze!</button>
           </form>
     </div>
   </div>
-  <div class="w3-half w3-blue-grey w3-container" style="height:800px">
+  <div class="w3-half w3-white w3-container" style="height:800px">
     <div class="w3-padding-64 w3-center">
       <h1>It depends.</h1>
       <!-- <img src="/w3images/avatar3.png" class="w3-margin w3-circle" alt="Person" style="width:50%"> -->
