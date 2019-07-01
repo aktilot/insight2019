@@ -63,15 +63,37 @@ def scream_counter(text):
     return screams
 
 
-Google_Curses = pd.read_csv("./data/RobertJGabriel_Google_swear_words.txt", header = None)
+Google_Curses = pd.read_csv("./data/custom_curse_words.txt", header = None)
 bad_words = Google_Curses[0].tolist()
 
 def swear_counter(text): #returns number of curses in text
     swear_jar = []
+    what_curses = []
     for word in bad_words:
         curses = text.count(word)
         swear_jar.append(curses)
-    return sum(swear_jar)
+        if curses > 0:
+            what_curses.append(word)
+    return sum(swear_jar), what_curses
+
+contractions = [
+  r'n\'t',
+  r'I\'m', 
+  r'(\w+)\'ll', 
+  r'(\w+)n\'t', 
+  r'(\w+)\'ve', 
+  r'(\w+)\'s', 
+  r'(\w+)\'re', 
+  r'(\w+)\'d',
+]
+
+def contraction_counter(text):
+    doc_length = len(text.split()) 
+    abbreviations = []
+    for abbrev in contractions:
+        num_abbrevs = len(re.findall(abbrev, text))
+        abbreviations.append(num_abbrevs)
+    return sum(abbreviations) / doc_length
     
     
 #%%
@@ -91,6 +113,8 @@ clean_data = clean_data.reset_index(drop=True)
 # remove hyperlinks
 clean_data["text"] = clean_data["text"].str.replace(r'http\S*\s', ' ')
 clean_data["text"] = clean_data["text"].str.replace(r'http\S*(\n|\)|$)', ' ')
+clean_data["text"] = clean_data["text"].str.replace(r'', ' ')
+          
         
 # recode the sources (needed for model?)
 sources_dict = {'Extremely Casual': 1, 'Slack-like': 2, 'Workplace_Casual': 3, 
@@ -196,16 +220,19 @@ combined_data["SIA_com"] = sia_comp
 
 #%%
 """
-Now for the custom features
+Now for the custom features. 
 """
 #%%   
 
 swear_jar = []
+what_curses = []
 for row in combined_data["text"]:
-    curses = swear_counter(row)    
-    swear_jar.append(curses)
-combined_data["Google_curses"] = swear_jar
-combined_data["Google_curses"].value_counts()
+    num_curses, which_curses = swear_counter(row)    
+    swear_jar.append(num_curses)
+    what_curses.append(which_curses)
+combined_data["num_curses"] = swear_jar
+combined_data["which_curses"] = what_curses
+combined_data["num_curses"].value_counts()
 
 
 emoji_counts = []
@@ -213,8 +240,8 @@ for row in combined_data["text"]:
     emoji_num = len(emoji_counter(str(row)))
     emoji_counts.append(emoji_num)
 
-combined_data["Num_emoji"] = emoji_counts
-combined_data["Num_emoji"].value_counts()
+combined_data["num_emoji"] = emoji_counts
+combined_data["num_emoji"].value_counts()
 
 
 internet_yelling = []
@@ -222,35 +249,97 @@ for row in combined_data["text"]:
     screams = scream_counter(str(row))
     internet_yelling.append(screams)
 
-combined_data["Yell_count"] = internet_yelling
-combined_data["Yell_count"].value_counts()
+combined_data["yell_count"] = internet_yelling
+combined_data["yell_count"].value_counts()
 
 punct_columns = ['#', '$', "''", '(', ')', ',', '.', ':','``']
-combined_data['Total_Punctuation'] = combined_data.loc[:, punct_columns].sum(axis=1) 
+combined_data['total_punctuation'] = combined_data.loc[:, punct_columns].sum(axis=1) 
+
+parentheses = ['(',')']
+combined_data['parentheses'] = combined_data.loc[:, parentheses].sum(axis=1) 
+
+quotes = ["''",'``', "'"]
+combined_data['quotes'] = combined_data.loc[:, quotes].sum(axis=1) 
+
+num_abbreviations = []
+for row in combined_data["text"]:
+    num_abbrevs = contraction_counter(str(row))
+    num_abbreviations.append(num_abbrevs)
+
+combined_data["contractions"] = num_abbreviations
 
 #%%
 """
-Visualize features to determine the best scaling method.
+Visualize features to determine which to include.
 
 Every feature has a bunch of outliers, so let's try masking them
-with NaN and then remaking the plots. That generally looks better,
+with NaN and then remaking the plots. Don't mask features like yelling and emoji.
+
+That generally looks better,
 although the punctuation POS are still maybe unhelpful.
 """
 #%% 
-masked_data = combined_data.iloc[:,3:].values
+features_to_mask = ['flesch_ease', 'flesch_grade', 'gfog',
+       'auto_readability', 'cl_index', 'lw_formula', 'dcr_score', 'syll_count',
+       'lex_count', '#', '$', "''", '(', ')', ',', '.', ':', 'CC', 'CD', 'DT',
+       'EX', 'FW', 'IN', 'JJ', 'JJR', 'JJS', 'LS', 'MD', 'NN', 'NNP', 'NNPS',
+       'NNS', 'PDT', 'POS', 'PRP', 'PRP$', 'RB', 'RBR', 'RBS', 'RP', 'SYM',
+       'TO', 'UH', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ', 'WDT', 'WP', 'WP$',
+       'WRB', '``', 'SIA_neg', 'SIA_pos', 'SIA_neu', 'SIA_com', 'total_punctuation', 
+       'parentheses', "contractions", "quotes"]
+
+unmasked_features = ['num_emoji', 'yell_count','num_curses']
+
+# mask the data to hide outliers
+masked_data = combined_data.loc[:,features_to_mask].values
 mask = np.abs((masked_data - masked_data.mean(0)) / masked_data.std(0)) > 2
-masked_data = pd.DataFrame(np.where(mask, np.nan, masked_data), combined_data.iloc[:,3:].index, combined_data.iloc[:,3:].columns)
+masked_data = pd.DataFrame(np.where(mask, np.nan, masked_data), 
+                           combined_data.loc[:,features_to_mask].index, 
+                           combined_data.loc[:,features_to_mask].columns)
 
-col_names = combined_data.columns[3:]
-fig, ax = plt.subplots(len(col_names), figsize=(5,160))
+# add category back
+masked_data['source'] = combined_data['source']
 
-for i, col_val in enumerate(col_names):
+# add back the unmasked features
+combined_data2 = pd.concat([combined_data.iloc[:,0], #the original text
+                            combined_data.loc[:,unmasked_features],
+                            masked_data], # last column will be source
+                            axis = 1)
 
-    sns.boxplot(y=masked_data[col_val], ax=ax[i])
-    ax[i].set_title('Box plot - {}'.format(col_val), fontsize=10)
-    ax[i].set_xlabel(col_val, fontsize=8)
+#combined_data2.loc[combined_data2["num_curses"] >2, ["which_curses"]]
 
-plt.show()
+#feature_descriptives = combined_data2.iloc[:,:-1].describe(include='all') #cripes we have terrible variation when you
+# look at the whole data set.
+
+
+# make a ton of barplots to see what the features look like.
+#for i in combined_data2.columns[1:-1]:
+#    sns.barplot(x = combined_data2["source"], y = combined_data2[i])
+#    plt.show()
+
+# make a list of the features with weird distributions or no variance:
+features_to_cut = ['lex_count', '#', 'LS', 'SYM','WP$', '``', "''",'(', ')',"quotes"]
+
+combined_data3 = combined_data2.drop(features_to_cut, axis = 1)
+
+
+
+#%%
+"""
+These features have odd distributions and probably need re-engineering:
+    - Num_emoji: why so many in reports?
+    - Yell_count: why so many in AAM?
+    - Num_curses: again, why so many in AAM?
+    - flesch_ease: what's a negative reading ease?
+    - ": let's combine all the quotation mark features, ''``'
+    - (,): these should be combined
+    
+"""
+#%% 
+
+
+
+
 #%%
 """
 I tested that the model still performs the same as during prototyping, so now
@@ -264,12 +353,13 @@ from sklearn.metrics import accuracy_score
 from sklearn import preprocessing
 
 # split data into X and y
-# X = combined_data.iloc[:,3:65]
-X = masked_data
+X = combined_data3.drop(["text", "source"], axis = 1)
 Y = combined_data['source'] # "source" is the column of numeric sources
 
+col_names = X.columns
+
 # split data into train and test sets
-seed = 8
+seed = 10
 test_size = 0.2
 X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=test_size, random_state=seed)
 
@@ -278,21 +368,26 @@ scaler = preprocessing.StandardScaler().fit(X_train)
 X_train = scaler.transform(X_train)
 X_test = scaler.transform(X_test) 
 
+# Make the split data back into a dataframe
 X_train = pd.DataFrame(X_train, columns = col_names)
 X_test = pd.DataFrame(X_test, columns = col_names)
 
-
-# fit model no training data
+# fit model on training data
 model = XGBClassifier()
 model.fit(X_train, y_train)
+
 # make predictions for test data
 y_pred = model.predict(X_test)
 predictions = [round(value) for value in y_pred]
+
 # evaluate predictions
 accuracy = accuracy_score(y_test, predictions)
 print("Accuracy: %.2f%%" % (accuracy * 100.0)) # drops to 78.16% with masked data
 
-xgboost.plot_importance(model)
+fig, ax = plt.subplots(figsize=(4, 10))
+xgboost.plot_importance(model, ax=ax)
+
+#xgboost.plot_importance(model)
 plt.show()
 #%%
 """
