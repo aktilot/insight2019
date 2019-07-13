@@ -110,7 +110,7 @@ all_data = pd.read_csv("./data/190617_corpus.csv", index_col = 0)
 clean_data = all_data.loc[all_data["subreddit"] != "AskHistorians",:]
 clean_data = clean_data.reset_index(drop=True) 
 
-# remove hyperlinks
+# remove hyperlinks & bullets (so they don't get counted as emoji)
 clean_data["text"] = clean_data["text"].str.replace(r'http\S*\s', ' ')
 clean_data["text"] = clean_data["text"].str.replace(r'http\S*(\n|\)|$)', ' ')
 clean_data["text"] = clean_data["text"].str.replace(r'', ' ')
@@ -125,12 +125,14 @@ clean_data.replace(sources_dict, inplace=True)
 clean_data = clean_data.dropna(subset=['source'], axis = 0) #remove 1 weird row
 clean_data["source"].value_counts()
 
-# maybe also remove rows that end up with nothing left in the text?
+# remove rows that end up with nothing left in the text
 doc_lengths = [len(text.strip().split()) for text in clean_data['text']]
 clean_data["doc_length"] = doc_lengths
 clean_data = clean_data[clean_data["doc_length"] != 0] # removes about 40 rows
 clean_data = clean_data.drop(["doc_length"], axis=1) 
 clean_data = clean_data.reset_index(drop=True) # so we must reset the index
+
+
 #%%
 """
 First create features from NLP packages:
@@ -223,7 +225,7 @@ combined_data["SIA_com"] = sia_comp
 Now for the custom features. 
 """
 #%%   
-
+#  cursing
 swear_jar = []
 what_curses = []
 for row in combined_data["text"]:
@@ -234,43 +236,61 @@ combined_data["num_curses"] = swear_jar
 combined_data["which_curses"] = what_curses
 combined_data["num_curses"].value_counts()
 
-
+# emoji use
 emoji_counts = []
 for row in combined_data["text"]:
     emoji_num = len(emoji_counter(str(row)))
     emoji_counts.append(emoji_num)
-
 combined_data["num_emoji"] = emoji_counts
 combined_data["num_emoji"].value_counts()
 
-
+# !?,  ?!, ??, and !!
 internet_yelling = []
 for row in combined_data["text"]:
     screams = scream_counter(str(row))
     internet_yelling.append(screams)
-
 combined_data["yell_count"] = internet_yelling
 combined_data["yell_count"].value_counts()
 
+# Combine the punctuation columns to get a total measure
 punct_columns = ['#', '$', "''", '(', ')', ',', '.', ':','``']
 combined_data['total_punctuation'] = combined_data.loc[:, punct_columns].sum(axis=1) 
 
+# Combine parentheses
 parentheses = ['(',')']
 combined_data['parentheses'] = combined_data.loc[:, parentheses].sum(axis=1) 
 
+# Encoding of quotation marks varies by source, need to combine them.
 quotes = ["''",'``', "'"]
 combined_data['quotes'] = combined_data.loc[:, quotes].sum(axis=1) 
 
+# Count up contractions, scale by doc length
 num_abbreviations = []
 for row in combined_data["text"]:
     num_abbrevs = contraction_counter(str(row))
     num_abbreviations.append(num_abbrevs)
-
 combined_data["contractions"] = num_abbreviations
 
 #%%
 """
-Visualize features to determine which to include.
+With this set of features, will try the pandas_profiling package to see if there
+are features I should remove, mask, threshold, etc. 
+"""
+#%%
+import pandas_profiling as pp
+profile = pp.ProfileReport(combined_data)
+profile.to_file("./data/190617_corpus_pre_cleaning_report.html")
+
+
+
+#%%
+"""
+Pandas profiling report showed that gfog is highly correlated with flesch_grade
+and auto-readability. Let's keep flesch_grade since that's the more commonly
+used grading scale. We'll also remove the `` column since it's redundant to 
+quotes.
+
+It also pointed out that we have 1499 duplicate rows, which should be removed.
 
 Every feature has a bunch of outliers, so let's try masking them
 with NaN and then remaking the plots. Don't mask features like yelling and emoji.
@@ -279,71 +299,56 @@ That generally looks better,
 although the punctuation POS are still maybe unhelpful.
 """
 #%% 
-features_to_mask = ['flesch_ease', 'flesch_grade', 'gfog',
-       'auto_readability', 'cl_index', 'lw_formula', 'dcr_score', 'syll_count',
-       'lex_count', '#', '$', "''", '(', ')', ',', '.', ':', 'CC', 'CD', 'DT',
-       'EX', 'FW', 'IN', 'JJ', 'JJR', 'JJS', 'LS', 'MD', 'NN', 'NNP', 'NNPS',
-       'NNS', 'PDT', 'POS', 'PRP', 'PRP$', 'RB', 'RBR', 'RBS', 'RP', 'SYM',
-       'TO', 'UH', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ', 'WDT', 'WP', 'WP$',
-       'WRB', '``', 'SIA_neg', 'SIA_pos', 'SIA_neu', 'SIA_com', 'total_punctuation', 
-       'parentheses', "contractions", "quotes"]
+# make a list of the features with weird distributions, no variance, or high
+# correlation:
+features_to_drop = ['gfog','``','auto_readability','lex_count', '#', 
+                    'LS', 'SYM','WP$', '``', "''",'(', ')','which_curses']
+
+combined_data2 = combined_data.drop(features_to_drop, axis = 1)
+
+
+## masking.
+features_to_mask = ['flesch_ease', 'flesch_grade', 'cl_index', 'lw_formula', 
+                    'dcr_score', 'syll_count', '$', ',', '.', ':', 'CC', 'CD',
+                    'DT','EX', 'FW', 'IN', 'JJ', 'JJR', 'JJS', 'MD', 'NN',
+                    'NNP', 'NNPS','NNS', 'PDT', 'POS', 'PRP', 'PRP$', 'RB', 
+                    'RBR', 'RBS', 'RP','TO', 'UH', 'VB', 'VBD', 'VBG', 'VBN', 
+                    'VBP', 'VBZ', 'WDT', 'WP', 'WRB', 'SIA_neg', 'SIA_pos', 
+                    'SIA_neu', 'SIA_com', 'total_punctuation','parentheses', 
+                    "contractions", "quotes"]
 
 unmasked_features = ['num_emoji', 'yell_count','num_curses']
 
 # mask the data to hide outliers
-masked_data = combined_data.loc[:,features_to_mask].values
+masked_data = combined_data2.loc[:,features_to_mask].values
 mask = np.abs((masked_data - masked_data.mean(0)) / masked_data.std(0)) > 2
 masked_data = pd.DataFrame(np.where(mask, np.nan, masked_data), 
-                           combined_data.loc[:,features_to_mask].index, 
-                           combined_data.loc[:,features_to_mask].columns)
+                           combined_data2.loc[:,features_to_mask].index, 
+                           combined_data2.loc[:,features_to_mask].columns)
 
 # add category back
-masked_data['source'] = combined_data['source']
+masked_data['source'] = combined_data2['source']
 
 # add back the unmasked features
-combined_data2 = pd.concat([combined_data.iloc[:,0], #the original text
-                            combined_data.loc[:,unmasked_features],
+combined_data3 = pd.concat([combined_data2.iloc[:,0], #the original text
+                            combined_data2.loc[:,unmasked_features],
                             masked_data], # last column will be source
                             axis = 1)
 
-#combined_data2.loc[combined_data2["num_curses"] >2, ["which_curses"]]
-
-#feature_descriptives = combined_data2.iloc[:,:-1].describe(include='all') #cripes we have terrible variation when you
-# look at the whole data set.
+#remove duplicate rows
+combined_data3 = combined_data3.drop_duplicates().reset_index(drop=True) 
 
 
-# make a ton of barplots to see what the features look like.
-#for i in combined_data2.columns[1:-1]:
-#    sns.barplot(x = combined_data2["source"], y = combined_data2[i])
-#    plt.show()
-
-# make a list of the features with weird distributions or no variance:
-features_to_cut = ['lex_count', '#', 'LS', 'SYM','WP$', '``', "''",'(', ')',"quotes"]
-
-combined_data3 = combined_data2.drop(features_to_cut, axis = 1)
-
-
+# make a new report and see if this is better. 
+profile = pp.ProfileReport(combined_data3)
+profile.to_file("./data/190617_corpus_post_cleaning_report.html")
 
 #%%
 """
-These features have odd distributions and probably need re-engineering:
-    - Num_emoji: why so many in reports?
-    - Yell_count: why so many in AAM?
-    - Num_curses: again, why so many in AAM?
-    - flesch_ease: what's a negative reading ease?
-    - ": let's combine all the quotation mark features, ''``'
-    - (,): these should be combined
-    
-"""
-#%% 
-
-
-
-
-#%%
-"""
-I tested that the model still performs the same as during prototyping, so now
-we'll save the combined_data dataframe via pickle.
+Looking much better! We have 55 features now, and can test if the model still
+performs the same as it did during protyping.
+Note that the model is still basically un-tuned at this point, we will do more
+tuning in a separate script.
 """
 #%% 
 import xgboost
@@ -391,12 +396,10 @@ xgboost.plot_importance(model, ax=ax)
 plt.show()
 #%%
 """
-Confusion matrix
+Confusion matrix, we're doing well even after reconfiguring the features! Let's
+stop here, save the dataframe, and go over to another script for model tuning.
 """
 #%% 
-
-
-
 def plot_confusion_matrix(y_true, y_pred, classes,
                           normalize=False,
                           title=None,
@@ -485,18 +488,18 @@ Sanity check: test specific items to see why they were labeled
 #import pickle
 #filename = '../pickled_LIME_5_as_5.sav'
 #pickle.dump(exp, open(filename, 'wb'))
-#%%
-"""
-Further sanity check: using Tree SHAP instead of LIME
-"""
-#%%
-import shap
-
-X_train_labeled = pd.DataFrame(X_train, columns = X.columns)
-
-explainer = shap.TreeExplainer(model)
-shap_values = explainer.shap_values(X_train_labeled)
-shap.summary_plot(shap_values, X_train_labeled)
+##%%
+#"""
+#Further sanity check: using Tree SHAP instead of LIME
+#"""
+##%%
+#import shap
+#
+#X_train_labeled = pd.DataFrame(X_train, columns = X.columns)
+#
+#explainer = shap.TreeExplainer(model)
+#shap_values = explainer.shap_values(X_train_labeled)
+#shap.summary_plot(shap_values, X_train_labeled)
 
 #shap.summary_plot(shap_values[0], X_train_labeled)
 #shap.force_plot(explainer.expected_value[0], shap_values[0], X_train_labeled.iloc[0,:])
@@ -508,7 +511,7 @@ we'll save the combined_data dataframe via pickle.
 """
 #%% 
 import pickle
-filename = '../pickled_corpus_w_features.sav'
-pickle.dump(combined_data, open(filename, 'wb'))
+filename = '../pickled_corpus_w_features2.sav'
+pickle.dump(combined_data3, open(filename, 'wb'))
 
 #%%
