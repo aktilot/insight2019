@@ -10,6 +10,7 @@ import seaborn as sns
 
 from sklearn.metrics import confusion_matrix
 from sklearn.utils.multiclass import unique_labels
+import matplotlib
 #%%
 """
 Custom functions for feature engineering
@@ -63,7 +64,7 @@ def scream_counter(text):
     return screams
 
 
-Google_Curses = pd.read_csv("./data/custom_curse_words.txt", header = None)
+Google_Curses = pd.read_csv("../data/custom_curse_words.txt", header = None)
 bad_words = Google_Curses[0].tolist()
 
 def swear_counter(text): #returns number of curses in text
@@ -106,7 +107,7 @@ Final cleaning of the final corpus (190617):
 """
 #%% 
 # remove AskHistorians and reset index (this is important)
-all_data = pd.read_csv("./data/190617_corpus.csv", index_col = 0)
+all_data = pd.read_csv("../data/190617_corpus.csv", index_col = 0)
 clean_data = all_data.loc[all_data["subreddit"] != "AskHistorians",:]
 clean_data = clean_data.reset_index(drop=True) 
 
@@ -277,12 +278,9 @@ With this set of features, will try the pandas_profiling package to see if there
 are features I should remove, mask, threshold, etc. 
 """
 #%%
-import pandas_profiling as pp
-profile = pp.ProfileReport(combined_data)
-profile.to_file("./data/190617_corpus_pre_cleaning_report.html")
-
-
-
+#import pandas_profiling as pp
+#profile = pp.ProfileReport(combined_data)
+#profile.to_file("./data/190617_corpus_pre_cleaning_report.html")
 #%%
 """
 Pandas profiling report showed that gfog is highly correlated with flesch_grade
@@ -340,12 +338,12 @@ combined_data3 = combined_data3.drop_duplicates().reset_index(drop=True)
 
 
 # make a new report and see if this is better. 
-profile = pp.ProfileReport(combined_data3)
-profile.to_file("./data/190617_corpus_post_cleaning_report.html")
+#profile = pp.ProfileReport(combined_data3)
+#profile.to_file("./data/190617_corpus_post_cleaning_report.html")
 
 #%%
 """
-Looking much better! We have 55 features now, and can test if the model still
+Looking much better! We have 54 features now, and can test if the model still
 performs the same as it did during protyping.
 Note that the model is still basically un-tuned at this point, we will do more
 tuning in a separate script.
@@ -359,16 +357,18 @@ from sklearn import preprocessing
 
 # split data into X and y
 X = combined_data3.drop(["text", "source"], axis = 1)
-Y = combined_data['source'] # "source" is the column of numeric sources
+Y = combined_data3['source'] # "source" is the column of numeric sources
 
 col_names = X.columns
 
 # split data into train and test sets
 seed = 10
 test_size = 0.2
-X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=test_size, random_state=seed)
+X_train, X_test, y_train, y_test = train_test_split(X, Y, 
+                                                    test_size=test_size, 
+                                                    random_state=seed)
 
-# This time we will scale the data correctly
+# Scaling the data
 scaler = preprocessing.StandardScaler().fit(X_train)
 X_train = scaler.transform(X_train)
 X_test = scaler.transform(X_test) 
@@ -387,13 +387,9 @@ predictions = [round(value) for value in y_pred]
 
 # evaluate predictions
 accuracy = accuracy_score(y_test, predictions)
-print("Accuracy: %.2f%%" % (accuracy * 100.0)) # drops to 78.16% with masked data
+print("Accuracy: %.2f%%" % (accuracy * 100.0)) # Still at 78.68%
 
-fig, ax = plt.subplots(figsize=(4, 10))
-xgboost.plot_importance(model, ax=ax)
 
-#xgboost.plot_importance(model)
-plt.show()
 #%%
 """
 Confusion matrix, we're doing well even after reconfiguring the features! Let's
@@ -511,7 +507,7 @@ we'll save the combined_data dataframe via pickle.
 """
 #%% 
 import pickle
-filename = '../pickled_corpus_w_features2.sav'
+filename = '../pickled_corpus_w_features3.sav'
 pickle.dump(combined_data3, open(filename, 'wb'))
 
 #%%

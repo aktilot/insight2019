@@ -23,43 +23,95 @@ from sklearn.utils.multiclass import unique_labels
 Load pickled dataframe.
 """
 #%% 
-combined_data = pickle.load(open("./data/pickled_corpus_w_features.sav", 'rb'))
-combined_data = combined_data.drop(["text_standard"], axis=1)
-combined_data = combined_data.reset_index(drop=True)
+combined_data = pickle.load(open("../pickled_corpus_w_features3.sav", 'rb'))
+#combined_data = combined_data.drop(["text_standard"], axis=1)
+#combined_data = combined_data.reset_index(drop=True)
 final_col_order = combined_data.columns.tolist()
+#%%
+"""
+Split and prep the data.
+"""
+#%%
+# split data into X and y
+X = combined_data.drop(["text", "source"], axis = 1)
+Y = combined_data['source'] # "source" is the column of numeric sources
+
+col_names = X.columns
+
+# split data into train and test sets
+seed = 10
+test_size = 0.2
+X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=test_size, random_state=seed)
+
+# This time we will scale the data correctly
+scaler = preprocessing.StandardScaler().fit(X_train)
+X_train = scaler.transform(X_train)
+X_test = scaler.transform(X_test) 
+
+# Make the split data back into a dataframe
+X_train = pd.DataFrame(X_train, columns = col_names)
+X_test = pd.DataFrame(X_test, columns = col_names)
+
+y_train = y_train.reset_index(drop=True)
+y_test = y_test.reset_index(drop=True)
 #%%
 """
 Test that model still performs the same as during prototyping. Still getting 77.83%
 """
 #%% 
 # split data into X and y
-X = combined_data.iloc[:,3:]
-Y = combined_data['source'] # "source" is the column of numeric sources
+#X = combined_data.iloc[:,3:]
+#Y = combined_data['source'] # "source" is the column of numeric sources
+#
+## split data into train and test sets
+#seed = 8
+#test_size = 0.2
+#X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=test_size, random_state=seed)
+#
+## This time we will scale the data correctly
+#scaler = preprocessing.StandardScaler().fit(X_train)
+#X_train = scaler.transform(X_train) #index now starts at 0
+#X_test = scaler.transform(X_test) #index now starts at 0
+#
+## fit model to training data
+#y_train2 = y_train.reset_index(drop=True)
+#y_test2 = y_test.reset_index(drop=True)
+#
+#model = XGBClassifier()
+#model.fit(X_train, y_train2) # should I reset the index on y_train?
+#
+## make predictions for test data
+#y_pred = model.predict(X_test)
+#predictions = [round(value) for value in y_pred]
+#
+## evaluate predictions
+#accuracy = accuracy_score(y_test2, predictions)
+#print("Accuracy: %.2f%%" % (accuracy * 100.0))
 
-# split data into train and test sets
-seed = 8
-test_size = 0.2
-X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=test_size, random_state=seed)
+model = XGBClassifier(n_estimators = 80, 
+                      learning_rate = 0.15, 
+                      colsample_bytree = 0.6,
+                      subsample = 0.7,
+                      max_depth = 4,
+                      early_stopping_rounds = 15
+                      )
 
-# This time we will scale the data correctly
-scaler = preprocessing.StandardScaler().fit(X_train)
-X_train = scaler.transform(X_train) #index now starts at 0
-X_test = scaler.transform(X_test) #index now starts at 0
+eval_set = [(X_train, y_train), (X_test, y_test)]
+eval_metric = ["merror", "mlogloss"]
 
-# fit model to training data
-y_train2 = y_train.reset_index(drop=True)
-y_test2 = y_test.reset_index(drop=True)
+model.fit(X_train, y_train,
+          eval_metric=eval_metric, 
+          eval_set=eval_set, 
+          verbose=True)
 
-model = XGBClassifier()
-model.fit(X_train, y_train2) # should I reset the index on y_train?
 
-# make predictions for test data
+
 y_pred = model.predict(X_test)
 predictions = [round(value) for value in y_pred]
 
 # evaluate predictions
-accuracy = accuracy_score(y_test2, predictions)
-print("Accuracy: %.2f%%" % (accuracy * 100.0))
+accuracy = accuracy_score(y_test, predictions)
+print("Accuracy: %.2f%%" % (accuracy * 100.0)) 
 
 #%%
 """
@@ -69,27 +121,27 @@ comparison in the web app when making suggestions.
 #%% 
 
 labeled_scaled_df = pd.DataFrame(X_train)
-labeled_scaled_df["source"] = y_train2
+labeled_scaled_df["source"] = y_train
 source_averages = labeled_scaled_df.groupby('source').mean()
-
-source_averages.columns = final_col_order[3:]
-source_averages = source_averages.reset_index(drop=True)
+source_averages
+#source_averages.columns = final_col_order[3:]
+#source_averages = source_averages.reset_index(drop=True)
 
 #%%
 """
 Pickle the model for import in web app
 """
 #%% 
-filename = './insight2019/flask_app/my_flask/model/finalized_XGBoost_model.sav'
+filename = './flask_app/canisaythat_aws/model/finalized_XGBoost_model2.sav'
 pickle.dump(model, open(filename, 'wb'))
 
-filename = './insight2019/flask_app/my_flask/model/finalized_XGBoost_scaler.sav'
+filename = './flask_app/canisaythat_aws/model/finalized_XGBoost_scaler2.sav'
 pickle.dump(scaler, open(filename, 'wb'))
 
-filename = './insight2019/flask_app/my_flask/model/finalized_column_order.sav'
+filename = './flask_app/canisaythat_aws/model/finalized_column_order2.sav'
 pickle.dump(final_col_order, open(filename, 'wb'))
 
-filename = './insight2019/flask_app/my_flask/model/finalized_source_averages.sav'
+filename = './flask_app/canisaythat_aws/model/finalized_source_averages2.sav'
 pickle.dump(source_averages, open(filename, 'wb'))
 
 
