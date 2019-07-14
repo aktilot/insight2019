@@ -40,16 +40,17 @@ source_to_id = {'Extremely Casual': 0 ,'Company IM': 1, 'Workplace Casual': 2, '
 """
 Custom functions for feature engineering
 """
-
 def textstat_stats(text):
     doc_length = len(text.split()) 
     flesch_ease = ts.flesch_reading_ease(text) #Flesch Reading Ease Score
     flesch_grade = ts.flesch_kincaid_grade(text) #Flesch-Kincaid Grade Level
     gfog = ts.gunning_fog(text) # FOG index, also indicates grade level
+#    smog = ts.smog_index(text) # SMOG index, also indicates grade level, only useful on 30+ sentences
     auto_readability = ts.automated_readability_index(text) #approximates the grade level needed to comprehend the text.
     cl_index = ts.coleman_liau_index(text) #grade level of the text using the Coleman-Liau Formula.
     lw_formula = ts.linsear_write_formula(text) #grade level using the Linsear Write Formula.
     dcr_score = ts.dale_chall_readability_score(text) #uses a lookup table of the most commonly used 3000 English words
+#    text_standard = ts.text_standard(text, float_output=False) # summary of all the grade level functions
     syll_count = ts.syllable_count(text, lang='en_US')
     syll_count_scaled = syll_count / doc_length
     lex_count = ts.lexicon_count(text, removepunct=True)
@@ -57,10 +58,12 @@ def textstat_stats(text):
     idx = ['flesch_ease', 'flesch_grade','gfog',
            'auto_readability','cl_index','lw_formula',
            'dcr_score', 
+#           'text_standard', 
            'syll_count', 'lex_count']
     return pd.Series([flesch_ease, flesch_grade, gfog, 
                       auto_readability, cl_index, lw_formula, 
                       dcr_score, 
+#                      text_standard, 
                       syll_count_scaled, lex_count_scaled], index = idx)
 
 def emoji_counter(text):
@@ -79,6 +82,41 @@ def scream_counter(text):
     return screams
 
 
+Google_Curses = pd.read_csv("../data/custom_curse_words.txt", header = None)
+bad_words = Google_Curses[0].tolist()
+
+def swear_counter(text): #returns number of curses in text
+    swear_jar = []
+    what_curses = []
+    for word in bad_words:
+        curses = text.count(word)
+        swear_jar.append(curses)
+        if curses > 0:
+            what_curses.append(word)
+    return sum(swear_jar), what_curses
+
+contractions = [
+  r'n\'t',
+  r'I\'m', 
+  r'(\w+)\'ll', 
+  r'(\w+)n\'t', 
+  r'(\w+)\'ve', 
+  r'(\w+)\'s', 
+  r'(\w+)\'re', 
+  r'(\w+)\'d',
+]
+
+def contraction_counter(text):
+    doc_length = len(text.split()) 
+    abbreviations = []
+    for abbrev in contractions:
+        num_abbrevs = len(re.findall(abbrev, text))
+        abbreviations.append(num_abbrevs)
+    return sum(abbreviations) / doc_length
+
+"""
+Process the user text
+"""
 
 def process_user_text(user_text, goal_category):
     #put user input text string into a DataFrame
@@ -159,33 +197,78 @@ def process_user_text(user_text, goal_category):
 
 
     ## Now for the custom features
-    Google_Curses = pd.read_csv("./model/custom_curse_words.txt", header = None)
-    bad_words = Google_Curses[0].tolist()
-
-    any_bad = []
+    #  cursing
+    swear_jar = []
+    what_curses = []
     for row in combined_data["text"]:
-        if any(str(word) in str(row) for word in bad_words):
-            any_bad.append(1)
-        else: any_bad.append(0)
+        num_curses, which_curses = swear_counter(row)    
+        swear_jar.append(num_curses)
+        what_curses.append(which_curses)
+    combined_data["num_curses"] = swear_jar
+    combined_data["which_curses"] = what_curses
 
-    combined_data["Google_curses"] = any_bad
-    combined_data["Google_curses"].value_counts()
-
+    # emoji use
     emoji_counts = []
     for row in combined_data["text"]:
         emoji_num = len(emoji_counter(str(row)))
         emoji_counts.append(emoji_num)
+    combined_data["num_emoji"] = emoji_counts
 
-    combined_data["Num_emoji"] = emoji_counts
-    combined_data["Num_emoji"].value_counts()
-
+    # !?,  ?!, ??, and !!
     internet_yelling = []
     for row in combined_data["text"]:
         screams = scream_counter(str(row))
         internet_yelling.append(screams)
+    combined_data["yell_count"] = internet_yelling
 
-    combined_data["Yell_count"] = internet_yelling
+    # Combine the punctuation columns to get a total measure
+    punct_columns = ['#', '$', "''", '(', ')', ',', '.', ':','``']
+    combined_data['total_punctuation'] = combined_data.loc[:, punct_columns].sum(axis=1) 
 
+    # Combine parentheses
+    parentheses = ['(',')']
+    combined_data['parentheses'] = combined_data.loc[:, parentheses].sum(axis=1) 
+
+    # Encoding of quotation marks varies by source, need to combine them.
+    quotes = ["''",'``', "'"]
+    combined_data['quotes'] = combined_data.loc[:, quotes].sum(axis=1) 
+
+    # Count up contractions, scale by doc length
+    num_abbreviations = []
+    for row in combined_data["text"]:
+        num_abbrevs = contraction_counter(str(row))
+        num_abbreviations.append(num_abbrevs)
+    combined_data["contractions"] = num_abbreviations
+
+
+    # Google_Curses = pd.read_csv("./model/custom_curse_words.txt", header = None)
+    # bad_words = Google_Curses[0].tolist()
+
+    # any_bad = []
+    # for row in combined_data["text"]:
+    #     if any(str(word) in str(row) for word in bad_words):
+    #         any_bad.append(1)
+    #     else: any_bad.append(0)
+
+    # combined_data["Google_curses"] = any_bad
+    # combined_data["Google_curses"].value_counts()
+
+    # emoji_counts = []
+    # for row in combined_data["text"]:
+    #     emoji_num = len(emoji_counter(str(row)))
+    #     emoji_counts.append(emoji_num)
+
+    # combined_data["Num_emoji"] = emoji_counts
+    # combined_data["Num_emoji"].value_counts()
+
+    # internet_yelling = []
+    # for row in combined_data["text"]:
+    #     screams = scream_counter(str(row))
+    #     internet_yelling.append(screams)
+
+    # combined_data["Yell_count"] = internet_yelling
+
+    ## Make sure user data is in the same order as the model.
     combined_data = combined_data[final_column_order] # this may be extremely important.
 
     return combined_data
