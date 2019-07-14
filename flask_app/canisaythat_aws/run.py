@@ -118,7 +118,7 @@ def process_user_text(user_text, goal_category):
     ## put user input text string into a DataFrame
     clean_data = pd.DataFrame(user_text, columns = ["text"]) 
     clean_data["source"] = goal_category
-    clean_data["subreddit"] = "placeholder"
+    # clean_data["subreddit"] = "placeholder"
 
     # remove hyperlinks & bullets (so they don't get counted as emoji)
     clean_data["text"] = clean_data["text"].str.replace(r'http\S*\s', ' ')
@@ -280,8 +280,10 @@ def get_professionalism_score(user_df):
     combined_data = user_df
 
     # split data into X and y
-    userX = combined_data.iloc[:,3:] #columns 0-2 are the text and categories
+    userX = combined_data.drop(["text", "source"], axis = 1)
     userY = combined_data['source'] # "source" is the column of numeric sources
+
+    col_names = userX.columns # will user later to reattach names
 
     # scale the data using scaler trained on original corpus
     userX = scaler.transform(userX) 
@@ -297,7 +299,7 @@ def get_professionalism_score(user_df):
 
     #attach column names to scaled features for user
     userX_df = pd.DataFrame(userX)
-    userX_df.columns = final_column_order[3:]
+    userX_df.columns = col_names
     userX_df = userX_df.round(decimals = 2)
     userX_df = userX_df.reset_index(drop=True)
 
