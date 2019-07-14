@@ -36,7 +36,7 @@ Split and prep the data.
 X = combined_data.drop(["text", "source"], axis = 1)
 Y = combined_data['source'] # "source" is the column of numeric sources
 
-col_names = X.columns
+#col_names = X.columns
 
 # split data into train and test sets
 seed = 10
@@ -49,8 +49,8 @@ X_train = scaler.transform(X_train)
 X_test = scaler.transform(X_test) 
 
 # Make the split data back into a dataframe
-X_train = pd.DataFrame(X_train, columns = col_names)
-X_test = pd.DataFrame(X_test, columns = col_names)
+#X_train = pd.DataFrame(X_train, columns = col_names)
+#X_test = pd.DataFrame(X_test, columns = col_names)
 
 y_train = y_train.reset_index(drop=True)
 y_test = y_test.reset_index(drop=True)

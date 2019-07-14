@@ -56,6 +56,10 @@ SIA_neg	Negative sentiment
 SIA_pos	Positive sentiment
 SIA_neu	Neutral sentiment
 SIA_com	Mixed sentiment
-Google_curses	Swearing
-Num_emoji	Emoji
-Yell_count	Internet yelling
+num_curses	Swearing
+num_emoji	Emoji
+yell_count	Internet yelling
+total_punctuation	Total punctuation
+parentheses	Parentheses
+contractions	Contractions
+quotes	Quotation marks

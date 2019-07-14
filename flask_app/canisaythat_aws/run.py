@@ -32,6 +32,8 @@ scaler = pickle.load(open("./model/finalized_XGBoost_scaler2.sav", 'rb'))
 final_column_order = pickle.load(open("./model/finalized_column_order2.sav", 'rb'))
 source_averages = pickle.load(open("./model/finalized_source_averages2.sav", 'rb'))
 source_averages = source_averages.round(decimals = 2)
+source_averages = source_averages.reset_index(drop=True)
+source_averages.columns = final_column_order[1:55]
 
 id_to_source = {0: 'Extremely Casual', 1: 'Company IM', 2: 'Workplace Casual', 3: 'Reports', 4: 'Dissertations'}
 source_to_id = {'Extremely Casual': 0 ,'Company IM': 1, 'Workplace Casual': 2, 'Reports': 3, 'Dissertations': 4}
@@ -111,7 +113,7 @@ def contraction_counter(text):
     return sum(abbreviations) / doc_length
 
 """
-Process the user text
+Process the user text, to generate features used in model
 """
 def process_user_text(user_text, goal_category):
 
@@ -161,10 +163,10 @@ def process_user_text(user_text, goal_category):
     for document in combined_data_wordpos:
         doc_length = len(document)
         mini_dict = Counter([pos for word,pos in document])
-        scaled_dict = {k: v / doc_length for k, v in mini_dict.items()}
-       for pos in pos_keys:
+        for pos in pos_keys:
            if pos not in mini_dict:
                mini_dict[pos] = 0
+        scaled_dict = {k: v / doc_length for k, v in mini_dict.items()}
         pos_counts.append(scaled_dict)
 
     # for document in combined_data_wordpos:
@@ -285,7 +287,7 @@ def process_user_text(user_text, goal_category):
 
     combined_data = combined_data.drop(features_to_drop, axis = 1)
 
-    # this may be extremely important.
+    # this may be extremely important. starts with text, ends with source
     combined_data = combined_data[final_column_order] 
 
     return combined_data
@@ -296,7 +298,7 @@ def get_professionalism_score(user_df):
 
     # split data into X and y
     userX = combined_data.drop(["text", "source"], axis = 1)
-    userY = combined_data['source'] # "source" is the column of numeric sources
+    userY = combined_data['source'] # "source" is the goal category
 
     col_names = userX.columns # will user later to reattach names
 
@@ -373,24 +375,33 @@ def make_classification_plot(y_probs, top_class_numeric):
 
 def get_SHAP_results(user_df, user_category, goal_category):
     
+    #set up dictionary of feature explanations.
     with open("./model/column_keys.txt") as fin:
          rows = ( line.strip().split('\t') for line in fin )
          column_dict = { row[0]:row[1:] for row in rows }
     
     
     #starting with output from process_user_text()
-    X_train_labeled = pd.DataFrame(user_df, columns = user_df.columns[3:])
+    # X_train_labeled = pd.DataFrame(user_df, columns = user_df.columns[3:])
+    user_df = user_df.drop(["text", "source"], axis = 1) # now we have only feature columns
+    X_train_labeled = user_df
+
     #set up the SHAP explainer for the XGBoost model and calc SHAP scores
     explainer = shap.TreeExplainer(model)
     shap_values = explainer.shap_values(X_train_labeled) # list of lists, outer lists
     # are the categories, inner list is feature contributions to that category
     
     # re-arrange SHAP values so they're easy to give back to user
-    source0_shap=pd.DataFrame(data=shap_values[0], columns=user_df.columns[3:], index=[0])
-    source1_shap=pd.DataFrame(data=shap_values[1], columns=user_df.columns[3:], index=[1])
-    source2_shap=pd.DataFrame(data=shap_values[2], columns=user_df.columns[3:], index=[2])
-    source3_shap=pd.DataFrame(data=shap_values[3], columns=user_df.columns[3:], index=[3])
-    source4_shap=pd.DataFrame(data=shap_values[4], columns=user_df.columns[3:], index=[4])
+    # source0_shap=pd.DataFrame(data=shap_values[0], columns=user_df.columns[3:], index=[0])
+    # source1_shap=pd.DataFrame(data=shap_values[1], columns=user_df.columns[3:], index=[1])
+    # source2_shap=pd.DataFrame(data=shap_values[2], columns=user_df.columns[3:], index=[2])
+    # source3_shap=pd.DataFrame(data=shap_values[3], columns=user_df.columns[3:], index=[3])
+    # source4_shap=pd.DataFrame(data=shap_values[4], columns=user_df.columns[3:], index=[4])
+    source0_shap=pd.DataFrame(data=shap_values[0], columns=user_df.columns, index=[0])
+    source1_shap=pd.DataFrame(data=shap_values[1], columns=user_df.columns, index=[1])
+    source2_shap=pd.DataFrame(data=shap_values[2], columns=user_df.columns, index=[2])
+    source3_shap=pd.DataFrame(data=shap_values[3], columns=user_df.columns, index=[3])
+    source4_shap=pd.DataFrame(data=shap_values[4], columns=user_df.columns, index=[4])
     
     user_reasoning=pd.concat([source0_shap,
                               source1_shap,
@@ -401,15 +412,17 @@ def get_SHAP_results(user_df, user_category, goal_category):
     
     # make sure to translate the written sources into numeric
     goal_numeric = source_to_id[goal_category]
+#    user_cat_string= id_to_source[user_category] #testing
     
-    #Why did user text get it's particular score?
-    user_category_reasoning = user_reasoning.sort_values(by=[user_category], ascending=False)
+    #Why did user text get it's particular score? (top 3 features)
+#    user_category_reasoning = user_reasoning.sort_values(by=[user_cat_string], ascending=False)
+    user_category_reasoning = user_reasoning.sort_values(by=user_category, ascending=False)
     user_category_reasoning_labels = user_category_reasoning.index.values[0:3]
     user_category_reasoning_labels2 = [column_dict[feature] for feature in user_category_reasoning_labels] 
     user_category_reasoning_labels2 = [item for sublist in user_category_reasoning_labels2 for item in sublist]
     user_category_reasoning_avgs = source_averages.loc[user_category, user_category_reasoning_labels]
     
-    # What features diminished their odds of being labeled as their goal?
+    # What features diminished their odds of being labeled as their goal?  (top 3 features)
     user_goal_improvement = user_reasoning.sort_values(by=[goal_numeric], ascending=True)
     user_goal_improvement_labels = user_goal_improvement.index.values[0:3]
     user_goal_improvement_labels2 = [column_dict[feature] for feature in user_goal_improvement_labels] 
@@ -418,7 +431,7 @@ def get_SHAP_results(user_df, user_category, goal_category):
 
 
     
-    # What features improved their odds of being labeled as their goal?
+    # What features improved their odds of being labeled as their goal?  (top 3 features)
     user_goal_encouragement = user_reasoning.sort_values(by=[goal_numeric], ascending=False)
     user_goal_encouragement_labels = user_goal_encouragement.index.values[0:3]
     user_goal_encouragement_labels2 = [column_dict[feature] for feature in user_goal_encouragement_labels]
@@ -427,6 +440,7 @@ def get_SHAP_results(user_df, user_category, goal_category):
 
     
     return user_category_reasoning_labels, user_category_reasoning_labels2, user_category_reasoning_avgs, user_goal_improvement_labels, user_goal_improvement_labels2, user_goal_improvement_avgs, user_goal_encouragement_labels, user_goal_encouragement_labels2, user_goal_encouragement_avgs
+
 
 
 def make_feedback_lollipop(improvement_feedback2, imp_cat_val, improvement_avgs, encouragement_feedback2, enc_cat_val, encouragement_avgs):
@@ -476,7 +490,7 @@ def make_feedback_lollipop(improvement_feedback2, imp_cat_val, improvement_avgs,
     ax.spines['left'].set_visible(False)
     # ax.spines['bottom'].set_visible(False)
     # ax.set_xticks([-2,0,2])
-    plt.xticks([-2,0,2], ('Less', 'Similar', 'More'))
+    plt.xticks([-2,0,2], ('Too low', 'Just right', 'Too high'))
     # ax.get_xaxis().set_visible(False)
 
     # add the plot data to the img thing
@@ -514,6 +528,7 @@ def get_outputs():
     # user_text1 = [i for i in user_text]
     user_text1 = [user_text]
 
+    # process the text, get back a dataframe
     user_df = process_user_text(user_text1, goal_category) # Returns a DataFrame with 1 row
 
     # run the model function
