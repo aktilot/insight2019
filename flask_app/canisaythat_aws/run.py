@@ -27,10 +27,10 @@ import xgboost
 app = Flask(__name__, static_url_path='/static')
 
 ### Load the pickled objects for my model and other needed parts.
-model = pickle.load(open("./model/finalized_XGBoost_model.sav", 'rb'))
-scaler = pickle.load(open("./model/finalized_XGBoost_scaler.sav", 'rb'))
-final_column_order = pickle.load(open("./model/finalized_column_order.sav", 'rb'))
-source_averages = pickle.load(open("./model/finalized_source_averages.sav", 'rb'))
+model = pickle.load(open("./model/finalized_XGBoost_model2.sav", 'rb'))
+scaler = pickle.load(open("./model/finalized_XGBoost_scaler2.sav", 'rb'))
+final_column_order = pickle.load(open("./model/finalized_column_order2.sav", 'rb'))
+source_averages = pickle.load(open("./model/finalized_source_averages2.sav", 'rb'))
 source_averages = source_averages.round(decimals = 2)
 
 id_to_source = {0: 'Extremely Casual', 1: 'Company IM', 2: 'Workplace Casual', 3: 'Reports', 4: 'Dissertations'}
@@ -159,7 +159,7 @@ def process_user_text(user_text, goal_category):
 
 
     ## Now for the custom features
-    Google_Curses = pd.read_csv("./model/RobertJGabriel_Google_swear_words.txt", header = None)
+    Google_Curses = pd.read_csv("./model/custom_curse_words.txt", header = None)
     bad_words = Google_Curses[0].tolist()
 
     any_bad = []
