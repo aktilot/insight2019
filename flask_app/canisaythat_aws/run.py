@@ -78,7 +78,7 @@ def scream_counter(text):
     return screams
 
 
-Google_Curses = pd.read_csv("../data/custom_curse_words.txt", header = None)
+Google_Curses = pd.read_csv("./model/custom_curse_words.txt", header = None)
 bad_words = Google_Curses[0].tolist()
 
 def swear_counter(text): #returns number of curses in text
@@ -149,14 +149,29 @@ def process_user_text(user_text, goal_category):
     for document in combined_data_wordtokens:
         pos = nltk.pos_tag(document) #default is Penn Treebank tagset
         combined_data_wordpos.append(pos)
-        
+
     pos_counts = []
+    
+    pos_keys = ['CC', 'CD','DT','EX','FW','IN', 'JJ','JJR','JJS','LS','MD','NN','NNS',
+               'NNP','NNPS','PDT','POS','PRP','PRP$','RB','RBR' ,'RBS','RP', 'SYM','TO',
+               'UH','VB', 'VBD', 'VBG','VBN','VBP','VBZ','WDT','WP','WP$','WRB',
+               '#', '$', "''", '(', ')', ',', '.', ':','``']
+
 
     for document in combined_data_wordpos:
         doc_length = len(document)
         mini_dict = Counter([pos for word,pos in document])
         scaled_dict = {k: v / doc_length for k, v in mini_dict.items()}
+       for pos in pos_keys:
+           if pos not in mini_dict:
+               mini_dict[pos] = 0
         pos_counts.append(scaled_dict)
+
+    # for document in combined_data_wordpos:
+    #     doc_length = len(document)
+    #     mini_dict = Counter([pos for word,pos in document])
+    #     scaled_dict = {k: v / doc_length for k, v in mini_dict.items()}
+    #     pos_counts.append(scaled_dict)
 
     pos_df = pd.DataFrame(pos_counts)
     pos_df = pos_df.fillna(0)
