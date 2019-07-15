@@ -17,6 +17,8 @@ from sklearn import preprocessing
 from sklearn.model_selection import train_test_split, GridSearchCV  
 from sklearn import metrics 
 from sklearn.metrics import accuracy_score
+from sklearn.metrics import confusion_matrix
+from sklearn.utils.multiclass import unique_labels
 
   
 import matplotlib.pylab as plt
@@ -316,3 +318,68 @@ Let's plot the feature importances.
 fig, ax = plt.subplots(figsize=(4, 10))
 xgb.plot_importance(model, ax=ax)
 plt.show()
+
+#%% 
+"""
+Testing one last thing - what about balancing the classes?
+"""
+#%%
+
+g = combined_data.groupby('source')
+balanced_data = pd.DataFrame(g.apply(lambda x: x.sample(g.size().min()).reset_index(drop=True)))
+
+
+X = balanced_data.drop(["text", "source"], axis = 1)
+Y = balanced_data['source'] # "source" is the column of numeric sources
+
+col_names = X.columns
+
+# split data into train and test sets
+seed = 10
+test_size = 0.2
+X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=test_size, random_state=seed)
+
+# This time we will scale the data correctly
+scaler = preprocessing.StandardScaler().fit(X_train)
+X_train = scaler.transform(X_train)
+X_test = scaler.transform(X_test) 
+
+# Make the split data back into a dataframe
+#X_train = pd.DataFrame(X_train, columns = col_names)
+#X_test = pd.DataFrame(X_test, columns = col_names)
+
+# train the model
+model = XGBClassifier(n_estimators = 80, 
+                      learning_rate = 0.15, 
+                      colsample_bytree = 0.6,
+                      subsample = 0.7,
+                      max_depth = 4,
+                      early_stopping_rounds = 15
+                      )
+
+eval_set = [(X_train, y_train), (X_test, y_test)]
+eval_metric = ["merror", "mlogloss"]
+
+model.fit(X_train, y_train,
+          eval_metric=eval_metric, 
+          eval_set=eval_set, 
+          verbose=True)
+
+
+
+y_pred = model.predict(X_test)
+predictions = [round(value) for value in y_pred]
+
+# evaluate predictions
+accuracy = accuracy_score(y_test, predictions)
+print("Accuracy: %.2f%%" % (accuracy * 100.0)) 
+
+plot_confusion_matrix(y_test, y_pred, classes = y_test, normalize=True,
+                      title='Normalized confusion matrix')
+
+
+filename = './flask_app/canisaythat_aws/model/test_XGBoost_model.sav'
+pickle.dump(model, open(filename, 'wb'))
+
+filename = './flask_app/canisaythat_aws/model/test_XGBoost_scaler.sav'
+pickle.dump(scaler, open(filename, 'wb'))

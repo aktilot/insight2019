@@ -27,10 +27,10 @@ import xgboost
 app = Flask(__name__, static_url_path='/static')
 
 ### Load the pickled objects for my model and other needed parts.
-model = pickle.load(open("./model/test_XGBoost_model.sav", 'rb'))
-scaler = pickle.load(open("./model/test_XGBoost_scaler.sav", 'rb'))
-final_column_order = pickle.load(open("./model/finalized_column_order2.sav", 'rb'))
-source_averages = pickle.load(open("./model/finalized_source_averages2.sav", 'rb'))
+model = pickle.load(open("/home/ubuntu/canisaythat_aws/model/test_XGBoost_model.sav", 'rb'))
+scaler = pickle.load(open("/home/ubuntu/canisaythat_aws/model/test_XGBoost_scaler.sav", 'rb'))
+final_column_order = pickle.load(open("/home/ubuntu/canisaythat_aws/model/finalized_column_order2.sav", 'rb'))
+source_averages = pickle.load(open("/home/ubuntu/canisaythat_aws/model/finalized_source_averages2.sav", 'rb'))
 source_averages = source_averages.round(decimals = 2)
 source_averages = source_averages.reset_index(drop=True)
 source_averages.columns = final_column_order[1:55]
@@ -80,7 +80,7 @@ def scream_counter(text):
     return screams
 
 
-Google_Curses = pd.read_csv("./model/custom_curse_words.txt", header = None)
+Google_Curses = pd.read_csv("/home/ubuntu/canisaythat_aws/model/custom_curse_words.txt", header = None)
 bad_words = Google_Curses[0].tolist()
 
 def swear_counter(text): #returns number of curses in text
@@ -376,7 +376,7 @@ def make_classification_plot(y_probs, top_class_numeric):
 def get_SHAP_results(user_df, user_category, goal_category):
     
     #set up dictionary of feature explanations.
-    with open("./model/column_keys.txt") as fin:
+    with open("/home/ubuntu/canisaythat_aws/model/column_keys.txt") as fin:
          rows = ( line.strip().split('\t') for line in fin )
          column_dict = { row[0]:row[1:] for row in rows }
     
