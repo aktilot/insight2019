@@ -19,7 +19,7 @@ kiwisolver==1.1.0
 MarkupSafe==1.1.1
 matplotlib==3.1.0
 networkx==2.3
-nltk==3.4.3
+nltk==3.6.3
 numpy==1.16.4
 pandas==0.24.2
 parso==0.5.0
